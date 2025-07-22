@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use tracing::{info, error, warn};
+use tracing::{info, error};
 use tracing_subscriber;
 
 mod vision_basic;
@@ -15,12 +15,10 @@ mod audio;
 // mod video_chat;  // Disabled due to winit compatibility issues
 
 use vision_basic as vision;
-use go2_basic as go2;
 
 use crate::config::OpticXTConfig;
 use crate::pipeline::VisionActionPipeline;
 // use crate::video_chat::{VideoChatInterface, VideoChatConfig, ChatMode};
-use crate::models::{GemmaModel, ModelConfig};
 
 #[derive(Parser)]
 #[command(name = "opticxt")]

@@ -1,6 +1,6 @@
 use crate::config::OpticXTConfig;
-use crate::vision::{VisionProcessor, FrameContext, Mat};
-use crate::context::{ContextManager, MandatoryContext};
+use crate::vision::{VisionProcessor, Mat};
+use crate::context::ContextManager;
 use crate::models::{GemmaModel, ModelConfig, ensure_model_downloaded};
 use crate::commands::{CommandExecutor, CommandExecutionResult};
 use crate::camera::{CameraSystem, CameraConfig};
@@ -262,7 +262,7 @@ impl VisionActionPipeline {
         }
     }
     
-    fn add_action_overlay(&self, frame: &mut Mat, result: &CommandExecutionResult) -> Result<()> {
+    fn add_action_overlay(&self, _frame: &mut Mat, result: &CommandExecutionResult) -> Result<()> {
         // Placeholder for action overlay without OpenCV
         debug!("Simulating action overlay: {}", result.message);
         Ok(())

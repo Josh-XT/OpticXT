@@ -4,9 +4,8 @@ use std::collections::VecDeque;
 use tracing::{info, debug, warn, error};
 use cpal::{Device, Stream, StreamConfig, SampleFormat, SampleRate};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use rodio::{Decoder, OutputStream, Sink, Source};
+use rodio::{Decoder, OutputStream, Sink};
 use tts::Tts;
-use std::io::Cursor;
 
 #[derive(Debug, Clone)]
 pub struct AudioConfig {

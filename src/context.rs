@@ -1,5 +1,4 @@
 use crate::vision::FrameContext;
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::time::SystemTime;
@@ -40,7 +39,7 @@ impl ContextManager {
         max_history: usize,
         include_timestamp: bool,
     ) -> Self {
-        let mut safety_rules = vec![
+        let safety_rules = vec![
             "Do not perform actions that could cause harm to humans".to_string(),
             "Always validate sensor data before taking physical actions".to_string(),
             "Stop immediately if unexpected obstacles are detected".to_string(),

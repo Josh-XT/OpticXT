@@ -1,10 +1,7 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
-use quick_xml::de::from_str;
-use std::collections::HashMap;
 use std::time::Duration;
-use tracing::{info, debug, warn, error};
-use tokio::process::Command;
+use tracing::{info, debug};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]

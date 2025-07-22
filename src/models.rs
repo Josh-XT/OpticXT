@@ -206,7 +206,7 @@ impl GemmaModel {
         }
         
         // Real model inference
-        if let (Some(ref model), Some(ref tokenizer)) = (&self.model, &self.tokenizer) {
+        if let (Some(ref _model), Some(ref tokenizer)) = (&self.model, &self.tokenizer) {
             // Tokenize input
             let encoding = tokenizer.encode(prompt, true)
                 .map_err(|e| anyhow!("Tokenization failed: {}", e))?;
@@ -256,7 +256,7 @@ impl GemmaModel {
         }
     }
     
-    async fn run_inference(&self, input_tensor: &Tensor, input_length: usize) -> Result<Vec<u32>> {
+    async fn run_inference(&self, input_tensor: &Tensor, _input_length: usize) -> Result<Vec<u32>> {
         if let Some(ref model) = self.model {
             let mut generated_tokens = Vec::new();
             let max_new_tokens = self.config.max_tokens.min(100); // Limit for real-time use

@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use std::time::SystemTime;
 use tracing::{info, debug, warn, error};
-use image::{DynamicImage, RgbImage, ImageBuffer, Rgb};
+use image::DynamicImage;
 use nokhwa::{Camera, utils::{RequestedFormat, RequestedFormatType, CameraIndex}};
 use nokhwa::pixel_format::RgbFormat;
 use crate::vision::Mat;
@@ -322,7 +322,7 @@ impl CameraSystem {
     }
     
     pub fn get_camera_info(&self) -> Result<String> {
-        if let Some(ref camera) = self.camera {
+        if let Some(ref _camera) = self.camera {
             Ok(format!("Camera {} - Active", self.config.camera_id))
         } else {
             Ok("No camera active".to_string())

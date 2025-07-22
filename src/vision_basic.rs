@@ -1,10 +1,8 @@
 use anyhow::{Result, anyhow};
 use image::{RgbImage, ImageBuffer, Rgb, DynamicImage};
-use std::collections::HashMap;
 use std::time::SystemTime;
-use std::path::Path;
-use tracing::{debug, warn, error, info};
-use crate::camera::{CameraSystem, CameraConfig, SensorData, LidarPoint};
+use tracing::{debug, info};
+use crate::camera::{SensorData, LidarPoint};
 
 // Simple matrix type for basic image operations
 #[derive(Debug, Clone)]
@@ -91,11 +89,11 @@ pub struct VisionProcessor {
 
 impl VisionProcessor {
     pub fn new(
-        camera_device: usize,
-        width: u32,
-        height: u32,
+        _camera_device: usize,
+        _width: u32,
+        _height: u32,
         confidence_threshold: f32,
-        vision_model: String,
+        _vision_model: String,
     ) -> Result<Self> {
         info!("Initializing VisionProcessor with basic image processing (OpenCV alternative)");
         
@@ -190,9 +188,9 @@ impl VisionProcessor {
         let mut pixel_count = 0;
         
         for pixel in pixels {
-            let brightness = (pixel[0] as f32 * 0.299 + 
+            let brightness = pixel[0] as f32 * 0.299 + 
                             pixel[1] as f32 * 0.587 + 
-                            pixel[2] as f32 * 0.114);
+                            pixel[2] as f32 * 0.114;
             total_brightness += brightness;
             pixel_count += 1;
         }
@@ -244,7 +242,7 @@ impl VisionProcessor {
     fn detect_by_color(&self, image: &DynamicImage) -> Vec<DetectedObject> {
         let mut objects = Vec::new();
         let rgb_image = image.to_rgb8();
-        let (width, height) = rgb_image.dimensions();
+        let (_width, _height) = rgb_image.dimensions();
         
         // Look for red objects (could be stop signs, people, etc.)
         let red_regions = self.find_color_regions(&rgb_image, |r, g, b| r > 150 && g < 100 && b < 100);
