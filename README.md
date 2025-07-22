@@ -453,3 +453,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **OpticXT: Real-world AI vision and voice assistant, ready for deployment**
 
 *From desktop video chat to autonomous robotics - OpticXT bridges the gap between AI and the physical world.*
+
+CA: Ga9P2TZcxsHjYmXdEyu9Z7wL1QAowjBAZwRQ41gBbonk
