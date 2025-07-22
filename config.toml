@@ -1,0 +1,45 @@
+# OpticXT Configuration File
+# Vision-Driven Autonomous Robot Control System
+
+[vision]
+# Camera settings
+width = 640
+height = 480
+fps = 30
+confidence_threshold = 0.5
+vision_model = "yolo"  # Options: yolo, coco, custom
+
+[model]
+# Gemma model configuration
+model_path = "models/gemma-3n-E4B-it-Q4_K_M.gguf"
+context_length = 4096
+temperature = 0.7
+top_p = 0.9
+max_tokens = 512
+
+[context]
+# Mandatory context system
+system_prompt = "prompts/system_prompt.txt"
+max_context_history = 10
+include_timestamp = true
+
+[commands]
+# Available command types
+enabled_commands = ["move", "rotate", "speak", "analyze", "offload"]
+timeout_seconds = 30
+validate_before_execution = true
+
+[performance]
+# Performance optimization
+worker_threads = 4
+frame_buffer_size = 10
+processing_interval_ms = 100
+use_gpu = true
+
+[audio]
+# Audio settings for voice input/output
+enabled = true
+sample_rate = 44100
+channels = 1
+enable_tts = true
+enable_speech_recognition = false

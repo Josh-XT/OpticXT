@@ -1,0 +1,87 @@
+[package]
+name = "opticxt"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Vision-Driven Autonomous Robot Control System"
+license = "MIT"
+repository = "https://github.com/yourusername/OpticXT"
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+
+# Computer Vision and Image Processing - using more compatible alternatives
+# opencv = "0.88"  # Currently problematic with libclang on this system
+image = "0.24"
+imageproc = "0.23"
+
+# Video processing and camera input
+v4l = "0.14"  # Video4Linux for camera access on Linux
+nokhwa = { version = "0.10", features = ["input-v4l"] }
+
+# Machine Learning and GGUF model support
+candle-core = "0.9"
+candle-nn = "0.9"
+candle-transformers = "0.9"
+hf-hub = { version = "0.3", features = ["tokio"] }
+tokenizers = "0.21"
+
+# Unitree Go2 SDK bindings (we'll create a wrapper)
+libc = "0.2"
+bindgen = "0.69"
+
+# Serialization for XML output
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+quick-xml = { version = "0.31", features = ["serialize"] }
+regex = "1.10"
+
+# Logging and error handling
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Configuration
+config = "0.14"
+toml = "0.8"
+clap = { version = "4.0", features = ["derive"] }
+
+# Networking for offloading
+reqwest = { version = "0.11", features = ["json"] }
+uuid = { version = "1.0", features = ["v4"] }
+
+# Real-time processing
+crossbeam = "0.8"
+parking_lot = "0.12"
+rand = "0.8"  # For model sampling
+
+# Audio processing for voice input/output
+rodio = "0.17"  # Audio playback
+cpal = "0.15"   # Cross-platform audio I/O
+tts = "0.26"    # Text-to-speech
+# speech-recognition = { version = "0.1", optional = true }  # Not available, would need custom implementation
+
+# Real-time video display (disabled for now due to compatibility issues)
+# pixels = "0.13"      # For video rendering
+# winit = "0.29"       # Window management  
+# pollster = "0.3"     # Async executor for graphics
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bin]]
+name = "opticxt"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true

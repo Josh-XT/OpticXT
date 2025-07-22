@@ -1,0 +1,79 @@
+# Rust
+/target
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Models and data
+/models/
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+
+# Configuration (user-specific)
+config.toml.local
+*.local.toml
+
+# Logs
+*.log
+logs/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+/dist/
+/build/
+
+# Test outputs
+/test_outputs/
+/recordings/
+
+# Cache
+.cache/
+/cache/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Audio/Video recordings (if any)
+*.wav
+*.mp3
+*.mp4
+*.avi
+*.mov
+
+# Documentation build
+/docs/_build/
+/docs/html/
+
+# Local environment
+.env
+.env.local
+
+# Profiling data
+*.prof
+perf.data*
+callgrind.out.*
+
+# Hardware-specific
+/calibration/
+device_*.json
+
+# Backup files
+*.bak
+*.backup
