@@ -12,17 +12,16 @@ repository = "https://github.com/yourusername/OpticXT"
 tokio = { version = "1.0", features = ["full"] }
 futures = "0.3"
 
-# Computer Vision and Image Processing - using more compatible alternatives
-# opencv = "0.88"  # Currently problematic with libclang on this system
-image = "0.25"  # Updated to match mistral.rs version
+# Computer Vision and Image Processing - using compatible versions with mistralrs
+image = "0.25"  # Updated to match mistralrs requirements
 imageproc = "0.23"
 
 # Video processing and camera input
 v4l = "0.14"  # Video4Linux for camera access on Linux
 nokhwa = { version = "0.10", features = ["input-v4l"] }
 
-# Machine Learning and Vision Model support - using mistral.rs for modern Gemma 3n
-mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git" }  # Modern multimodal inference backend
+# Machine Learning and UQFF model support - using mistral.rs for modern Gemma 3n UQFF
+mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git" }  # Modern UQFF vision inference backend
 tokenizers = "0.21"
 hf-hub = "0.3"  # For model/tokenizer downloading
 either = "1.9"  # Required by mistral.rs

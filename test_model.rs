@@ -6,7 +6,7 @@ use std::env;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env::set_var("RUST_LOG", "info");
-    let _ = tracing_subscriber::fmt::try_init(); // Use try_init to avoid panic if already initialized
+    tracing_subscriber::fmt::init();
     
     println!("Testing OpticXT Gemma Model...");
     

@@ -13,6 +13,8 @@ mod go2_basic;
 mod camera;
 mod audio;
 mod test_uqff;
+mod test_multimodal;
+mod test_simple;
 // mod video_chat;  // Disabled due to winit compatibility issues
 
 use vision_basic as vision;
@@ -60,6 +62,14 @@ struct Args {
     /// Test UQFF model loading and inference
     #[arg(long)]
     test_uqff: bool,
+    
+    /// Test multimodal inference (text, vision, audio)
+    #[arg(long)]
+    test_multimodal: bool,
+    
+    /// Test simple text inference only
+    #[arg(long)]
+    test_simple: bool,
 }
 
 #[tokio::main]
@@ -89,6 +99,20 @@ async fn main() -> Result<()> {
     if args.test_uqff {
         info!("Starting UQFF model test");
         test_uqff::test_uqff_model().await?;
+        return Ok(());
+    }
+    
+    // Check if multimodal test mode is requested
+    if args.test_multimodal {
+        info!("Starting multimodal inference test");
+        test_multimodal::test_multimodal_inference().await?;
+        return Ok(());
+    }
+    
+    // Check if simple test mode is requested
+    if args.test_simple {
+        info!("Starting simple inference test");
+        test_simple::test_simple_inference().await?;
         return Ok(());
     }
     

@@ -33,32 +33,54 @@ impl GemmaModel {
     pub async fn load(model_id: Option<String>, config: ModelConfig) -> Result<Self> {
         info!("Initializing Gemma model with mistral.rs Vision API");
         
-        let (model_id, uqff_file) = model_id.map(|id| (id, None)).unwrap_or_else(|| {
+        let (model_id, uqff_path) = model_id.map(|id| (id, None)).unwrap_or_else(|| {
             // Use the pre-quantized UQFF model for better performance and faster loading
-            ("EricB/gemma-3n-E4B-it-UQFF".to_string(), Some("gemma3n-e4b-it-q4k-0.uqff".to_string()))
+            let model_id = "EricB/gemma-3n-E4B-it-UQFF".to_string();
+            
+            // Construct the full path to the cached UQFF file
+            let home = std::env::var("HOME").unwrap_or_else(|_| "/home/josh".to_string());
+            let cache_path = PathBuf::from(home)
+                .join(".cache/huggingface/hub/models--EricB--gemma-3n-E4B-it-UQFF/snapshots/78bea20ac3910e8d0ed509b7d13d19acf0618152/gemma3n-e4b-it-q4k-0.uqff");
+            
+            (model_id, Some(cache_path))
         });
         
         info!("Loading HuggingFace model: {}", model_id);
-        if let Some(ref uqff) = uqff_file {
-            info!("Using UQFF quantized model: {}", uqff);
+        if let Some(ref uqff_path) = uqff_path {
+            info!("Using UQFF quantized model from cache: {}", uqff_path.display());
         }
         
         // Create VisionModelBuilder for full multimodal support
-        let model = if let Some(uqff_filename) = uqff_file {
-            // Use deprecated method for now - will work but may need updating in future
-            #[allow(deprecated)]
-            VisionModelBuilder::new(&model_id)
-                // Don't use with_logging() to avoid double tracing initialization
-                .from_uqff(vec![PathBuf::from(uqff_filename)])
-                .build()
-                .await?
+        info!("Creating VisionModelBuilder with model_id: {}", model_id);
+        let model = if let Some(uqff_full_path) = uqff_path {
+            info!("Building UQFF model with cached file: {}", uqff_full_path.display());
+            
+            // Check if the cached file exists
+            if !uqff_full_path.exists() {
+                warn!("UQFF cache file not found at: {}, falling back to ISQ quantization", uqff_full_path.display());
+                // Fallback to ISQ quantization
+                VisionModelBuilder::new(&model_id)
+                    .with_isq(IsqType::Q4K)
+                    .build()
+                    .await
+                    .map_err(|e| anyhow!("Failed to build ISQ fallback model: {}", e))?
+            } else {
+                // Use deprecated method for now - will work but may need updating in future
+                #[allow(deprecated)]
+                VisionModelBuilder::new(&model_id)
+                    .from_uqff(vec![uqff_full_path])
+                    .build()
+                    .await
+                    .map_err(|e| anyhow!("Failed to build UQFF model from cache: {}", e))?
+            }
         } else {
+            info!("Building ISQ quantized model");
             // Fallback to ISQ quantization for non-UQFF models
             VisionModelBuilder::new(&model_id)
                 .with_isq(IsqType::Q4K)
-                // Don't use with_logging() to avoid double tracing initialization
                 .build()
-                .await?
+                .await
+                .map_err(|e| anyhow!("Failed to build ISQ model: {}", e))?
         };
         
         info!("✅ Successfully loaded HuggingFace model with multimodal support: {}", model_id);
@@ -128,8 +150,15 @@ impl GemmaModel {
         info!("Running model inference with {} modalities", 
               1 + image.is_some() as usize + audio.is_some() as usize);
         
-        // Send the request and get response
-        let response = self.model.send_chat_request(messages).await?;
+        info!("Sending chat request with {} messages", "Vision API");
+        
+        // Send the request and get response with timeout
+        let response = tokio::time::timeout(
+            std::time::Duration::from_secs(30), // Reduced timeout since first inference worked
+            self.model.send_chat_request(messages)
+        ).await
+        .map_err(|_| anyhow!("Model inference timed out after 30 seconds"))?
+        .map_err(|e| anyhow!("Model inference failed: {}", e))?;
         
         // Extract generated text from response
         let generated_text = response.choices[0].message.content.as_ref()
@@ -238,6 +267,7 @@ impl GemmaModel {
         
         Ok(tokens_per_sec)
     }
+    
     
     pub fn get_config(&self) -> &ModelConfig {
         &self.config
