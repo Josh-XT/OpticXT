@@ -50,40 +50,47 @@ impl GemmaModel {
             info!("Using UQFF quantized model from cache: {}", uqff_path.display());
         }
         
-        // Create VisionModelBuilder for full multimodal support
+        // Create VisionModelBuilder for full multimodal support with MatFormer configuration
         info!("Creating VisionModelBuilder with model_id: {}", model_id);
         let model = if let Some(uqff_full_path) = uqff_path {
             info!("Building UQFF model with cached file: {}", uqff_full_path.display());
             
             // Check if the cached file exists
             if !uqff_full_path.exists() {
-                warn!("UQFF cache file not found at: {}, falling back to ISQ quantization", uqff_full_path.display());
-                // Fallback to ISQ quantization
+                warn!("UQFF cache file not found at: {}, falling back to ISQ quantization with MatFormer", uqff_full_path.display());
+                // Fallback to ISQ quantization with MatFormer configuration
                 VisionModelBuilder::new(&model_id)
                     .with_isq(IsqType::Q4K)
+                    .with_matformer_config_path(PathBuf::from("matformer_configs/gemma3n.csv"))
+                    .with_matformer_slice_name("Config for E2.49B (block-level)".to_string())
                     .build()
                     .await
-                    .map_err(|e| anyhow!("Failed to build ISQ fallback model: {}", e))?
+                    .map_err(|e| anyhow!("Failed to build ISQ fallback model with MatFormer: {}", e))?
             } else {
                 // Use deprecated method for now - will work but may need updating in future
+                // Add MatFormer configuration for optimal performance
                 #[allow(deprecated)]
                 VisionModelBuilder::new(&model_id)
                     .from_uqff(vec![uqff_full_path])
+                    .with_matformer_config_path(PathBuf::from("matformer_configs/gemma3n.csv"))
+                    .with_matformer_slice_name("Config for E2.49B (block-level)".to_string())
                     .build()
                     .await
-                    .map_err(|e| anyhow!("Failed to build UQFF model from cache: {}", e))?
+                    .map_err(|e| anyhow!("Failed to build UQFF model from cache with MatFormer: {}", e))?
             }
         } else {
-            info!("Building ISQ quantized model");
-            // Fallback to ISQ quantization for non-UQFF models
+            info!("Building ISQ quantized model with MatFormer configuration");
+            // Fallback to ISQ quantization for non-UQFF models with MatFormer
             VisionModelBuilder::new(&model_id)
                 .with_isq(IsqType::Q4K)
+                .with_matformer_config_path(PathBuf::from("matformer_configs/gemma3n.csv"))
+                .with_matformer_slice_name("Config for E2.49B (block-level)".to_string())
                 .build()
                 .await
-                .map_err(|e| anyhow!("Failed to build ISQ model: {}", e))?
+                .map_err(|e| anyhow!("Failed to build ISQ model with MatFormer: {}", e))?
         };
         
-        info!("✅ Successfully loaded HuggingFace model with multimodal support: {}", model_id);
+        info!("✅ Successfully loaded HuggingFace Gemma 3n model with multimodal support and MatFormer E2.49B slice: {}", model_id);
         
         Ok(Self {
             model: Arc::new(model),
@@ -118,10 +125,10 @@ impl GemmaModel {
         
         debug!("Generating multimodal response for prompt: {}", effective_prompt);
         
-        // Create the VisionMessages based on input modalities
+        // Create the VisionMessages based on input modalities following Gemma 3n API
         let messages = if let Some(ref img) = image {
             if let Some(ref audio_bytes) = audio {
-                // Text + Image + Audio
+                // Text + Image + Audio - Full multimodal
                 let audio_input = AudioInput::from_bytes(audio_bytes)?;
                 VisionMessages::new().add_multimodal_message(
                     TextMessageRole::User,
@@ -131,7 +138,7 @@ impl GemmaModel {
                     &*self.model,
                 )?
             } else {
-                // Text + Image
+                // Text + Image - Follow the official Gemma 3n pattern
                 VisionMessages::new().add_image_message(
                     TextMessageRole::User,
                     effective_prompt,
@@ -154,10 +161,10 @@ impl GemmaModel {
         
         // Send the request and get response with timeout
         let response = tokio::time::timeout(
-            std::time::Duration::from_secs(30), // Reduced timeout since first inference worked
+            std::time::Duration::from_secs(60), // Increased timeout for vision models
             self.model.send_chat_request(messages)
         ).await
-        .map_err(|_| anyhow!("Model inference timed out after 30 seconds"))?
+        .map_err(|_| anyhow!("Model inference timed out after 60 seconds"))?
         .map_err(|e| anyhow!("Model inference failed: {}", e))?;
         
         // Extract generated text from response

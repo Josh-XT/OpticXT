@@ -15,6 +15,7 @@ mod audio;
 mod test_uqff;
 mod test_multimodal;
 mod test_simple;
+mod test_image;
 // mod video_chat;  // Disabled due to winit compatibility issues
 
 use vision_basic as vision;
@@ -70,6 +71,10 @@ struct Args {
     /// Test simple text inference only
     #[arg(long)]
     test_simple: bool,
+    
+    /// Test image inference only
+    #[arg(long)]
+    test_image: bool,
 }
 
 #[tokio::main]
@@ -113,6 +118,13 @@ async fn main() -> Result<()> {
     if args.test_simple {
         info!("Starting simple inference test");
         test_simple::test_simple_inference().await?;
+        return Ok(());
+    }
+    
+    // Check if image test mode is requested
+    if args.test_image {
+        info!("Starting image inference test");
+        test_image::test_image_only().await?;
         return Ok(());
     }
     
