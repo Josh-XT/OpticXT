@@ -131,11 +131,11 @@ impl ContextManager {
         
         // Action request
         prompt.push_str("REQUIRED OUTPUT:\n");
-        prompt.push_str("Based on the current visual input and context, generate the appropriate action command in XML format. ");
-        prompt.push_str("Available commands: <move>, <rotate>, <speak>, <analyze>, <offload>. ");
-        prompt.push_str("Always include reasoning for your decision. ");
-        prompt.push_str("If no action is needed, output <wait> with reasoning.\n\n");
-        prompt.push_str("ACTION:");
+        prompt.push_str("Based on the current visual input and context, respond with an appropriate action using OpenAI-style tool calling. ");
+        prompt.push_str("Available functions: move, rotate, speak, analyze, wait, stop. ");
+        prompt.push_str("Always include reasoning in the function arguments. ");
+        prompt.push_str("If no action is needed, use the 'wait' function with reasoning.\n\n");
+        prompt.push_str("RESPONSE:");
         
         // Aggressively limit prompt length to prevent token explosion
         const MAX_PROMPT_CHARS: usize = 4000; // Conservative limit

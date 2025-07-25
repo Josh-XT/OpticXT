@@ -1,6 +1,5 @@
 use anyhow::{Result, anyhow};
 use image::{RgbImage, ImageBuffer, Rgb, DynamicImage};
-use std::time::SystemTime;
 use tracing::{debug, info};
 use crate::camera::{SensorData, LidarPoint};
 
@@ -21,17 +20,6 @@ impl Mat {
             width,
             height,
             channels,
-        }
-    }
-
-    pub fn from_image(img: &DynamicImage) -> Self {
-        let rgb_img = img.to_rgb8();
-        let (width, height) = rgb_img.dimensions();
-        Self {
-            data: rgb_img.into_raw(),
-            width,
-            height,
-            channels: 3,
         }
     }
 
@@ -75,7 +63,6 @@ pub struct BoundingBox {
 
 #[derive(Debug, Clone)]
 pub struct FrameContext {
-    pub timestamp: std::time::SystemTime,
     pub objects: Vec<DetectedObject>,
     pub scene_description: String,
     pub frame_size: (u32, u32),
@@ -84,7 +71,6 @@ pub struct FrameContext {
 
 pub struct VisionProcessor {
     confidence_threshold: f32,
-    frame_counter: usize,
 }
 
 impl VisionProcessor {
@@ -99,7 +85,6 @@ impl VisionProcessor {
         
         Ok(Self {
             confidence_threshold,
-            frame_counter: 0,
         })
     }
     
@@ -109,8 +94,6 @@ impl VisionProcessor {
     }
     
     pub async fn process_frame(&mut self, frame: &Mat, sensor_data: &SensorData) -> Result<FrameContext> {
-        let timestamp = SystemTime::now();
-        
         // Perform basic object detection using image analysis
         let objects = self.basic_detection(frame)?;
         
@@ -123,7 +106,6 @@ impl VisionProcessor {
         let scene_description = self.generate_scene_description(&filtered_objects, &sensor_data.lidar_points);
         
         Ok(FrameContext {
-            timestamp,
             objects: filtered_objects,
             scene_description,
             frame_size: (frame.cols(), frame.rows()),
@@ -135,7 +117,7 @@ impl VisionProcessor {
         debug!("Running real object detection using image analysis");
         
         let mut objects = Vec::new();
-        let (width, height) = (frame.cols(), frame.rows());
+        let (_width, _height) = (frame.cols(), frame.rows());
         
         // Convert to image for analysis
         let image = frame.to_image()?;
@@ -251,7 +233,7 @@ impl VisionProcessor {
         // Simple edge detection
         for y in 1..(height - 1) {
             for x in 1..(width - 1) {
-                if let Some(center) = rgb_image.get_pixel_checked(x, y) {
+                if let Some(_center) = rgb_image.get_pixel_checked(x, y) {
                     let mut grad_x = 0.0;
                     let mut grad_y = 0.0;
                     

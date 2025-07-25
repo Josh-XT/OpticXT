@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use tracing::{info, debug, warn};
 use image::DynamicImage;
+use serde_json::json;
 
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
@@ -159,12 +160,12 @@ impl GemmaModel {
         
         info!("Sending chat request with {} messages", "Vision API");
         
-        // Send the request and get response with timeout
+        // Send the request and get response with timeout (increased for UQFF models)
         let response = tokio::time::timeout(
-            std::time::Duration::from_secs(60), // Increased timeout for vision models
+            std::time::Duration::from_secs(180), // Increased timeout for UQFF vision models
             self.model.send_chat_request(messages)
         ).await
-        .map_err(|_| anyhow!("Model inference timed out after 60 seconds"))?
+        .map_err(|_| anyhow!("Model inference timed out after 180 seconds"))?
         .map_err(|e| anyhow!("Model inference failed: {}", e))?;
         
         // Extract generated text from response
@@ -185,7 +186,7 @@ impl GemmaModel {
             } else {
                 "I am ready to assist you."
             };
-            let formatted_text = self.format_as_xml_command(fallback_text, effective_prompt)?;
+            let formatted_text = self.format_as_tool_call(fallback_text, effective_prompt)?;
             
             return Ok(GenerationResult {
                 text: formatted_text,
@@ -194,8 +195,8 @@ impl GemmaModel {
             });
         }
         
-        // Format as XML command
-        let formatted_text = self.format_as_xml_command(&cleaned_text, effective_prompt)?;
+        // Format as OpenAI tool call
+        let formatted_text = self.format_as_tool_call(&cleaned_text, effective_prompt)?;
         
         let processing_time = start_time.elapsed();
         let estimated_tokens = cleaned_text.split_whitespace().count();
@@ -225,7 +226,7 @@ impl GemmaModel {
             .to_string()
     }
     
-    fn format_as_xml_command(&self, text: &str, prompt: &str) -> Result<String> {
+    pub fn format_as_tool_call(&self, text: &str, prompt: &str) -> Result<String> {
         let prompt_lower = prompt.to_lowercase();
         
         // If text is empty or garbled, provide a sensible default
@@ -235,23 +236,92 @@ impl GemmaModel {
             text
         };
         
-        // Determine appropriate XML command based on content and prompt
-        let xml_response = if effective_text.contains("move") || effective_text.contains("forward") || prompt_lower.contains("move") || prompt_lower.contains("navigate") {
-            format!(r#"<move direction="forward" distance="0.5" speed="normal">{}</move>"#, effective_text)
+        // Determine appropriate OpenAI-style function call based on content and prompt
+        let tool_call = if effective_text.contains("move") || effective_text.contains("forward") || prompt_lower.contains("move") || prompt_lower.contains("navigate") {
+            json!([{
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "move",
+                    "arguments": json!({
+                        "direction": "forward",
+                        "distance": 0.5,
+                        "speed": "normal",
+                        "reasoning": effective_text
+                    }).to_string()
+                }
+            }])
         } else if effective_text.contains("turn") || effective_text.contains("rotate") || prompt_lower.contains("turn") || prompt_lower.contains("rotate") {
-            format!(r#"<rotate direction="left" angle="30">{}</rotate>"#, effective_text)
+            json!([{
+                "id": "call_1", 
+                "type": "function",
+                "function": {
+                    "name": "rotate",
+                    "arguments": json!({
+                        "direction": "left",
+                        "angle": 30.0,
+                        "reasoning": effective_text
+                    }).to_string()
+                }
+            }])
         } else if effective_text.contains("stop") || effective_text.contains("halt") || prompt_lower.contains("stop") {
-            format!(r#"<stop immediate="true">{}</stop>"#, effective_text)
+            json!([{
+                "id": "call_1",
+                "type": "function", 
+                "function": {
+                    "name": "stop",
+                    "arguments": json!({
+                        "immediate": true,
+                        "reasoning": effective_text
+                    }).to_string()
+                }
+            }])
         } else if effective_text.contains("wait") || effective_text.contains("pause") || prompt_lower.contains("wait") {
-            format!(r#"<wait duration="2.0">{}</wait>"#, effective_text)
+            json!([{
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "wait", 
+                    "arguments": json!({
+                        "duration": 2.0,
+                        "reasoning": effective_text
+                    }).to_string()
+                }
+            }])
         } else if effective_text.contains("analyze") || prompt_lower.contains("analyze") || prompt_lower.contains("vision") {
-            format!(r#"<analyze target="environment" detail_level="detailed">{}</analyze>"#, effective_text)
+            json!([{
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "analyze",
+                    "arguments": json!({
+                        "target": "environment",
+                        "detail_level": "detailed",
+                        "reasoning": effective_text
+                    }).to_string()
+                }
+            }])
         } else {
             // Default to speak for general responses
-            format!(r#"<speak>{}</speak>"#, effective_text)
+            json!([{
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "speak",
+                    "arguments": json!({
+                        "text": effective_text,
+                        "voice": "default",
+                        "reasoning": "Providing a response to the user's query"
+                    }).to_string()
+                }
+            }])
         };
         
-        Ok(xml_response)
+        // Format as pretty JSON
+        let formatted_json = serde_json::to_string_pretty(&tool_call)
+            .unwrap_or_else(|_| r#"[{"id": "call_1", "type": "function", "function": {"name": "speak", "arguments": "{\"text\": \"I am ready to assist you.\"}"}}]"#.to_string());
+        
+        Ok(formatted_json)
     }
     
     /// Benchmark the model performance

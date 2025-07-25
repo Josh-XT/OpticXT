@@ -243,20 +243,32 @@ impl VisionActionPipeline {
         Ok(())
     }
     
-    fn extract_action_type(&self, xml_output: &str) -> String {
-        // Extract action type from XML output
-        if xml_output.contains("<move") {
+    fn extract_action_type(&self, tool_call_output: &str) -> String {
+        // Extract action type from JSON tool call output
+        if let Ok(tool_calls) = serde_json::from_str::<Vec<serde_json::Value>>(tool_call_output) {
+            if let Some(first_call) = tool_calls.first() {
+                if let Some(function_name) = first_call.get("function")
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str()) 
+                {
+                    return function_name.to_string();
+                }
+            }
+        }
+        
+        // Fallback: try to detect from text content (for compatibility)
+        if tool_call_output.contains("move") {
             "move".to_string()
-        } else if xml_output.contains("<rotate") {
+        } else if tool_call_output.contains("rotate") {
             "rotate".to_string()
-        } else if xml_output.contains("<speak") {
+        } else if tool_call_output.contains("speak") {
             "speak".to_string()
-        } else if xml_output.contains("<analyze") {
+        } else if tool_call_output.contains("analyze") {
             "analyze".to_string()
-        } else if xml_output.contains("<offload") {
-            "offload".to_string()
-        } else if xml_output.contains("<wait") {
+        } else if tool_call_output.contains("wait") {
             "wait".to_string()
+        } else if tool_call_output.contains("stop") {
+            "stop".to_string()
         } else {
             "unknown".to_string()
         }
@@ -306,8 +318,8 @@ impl VisionActionPipeline {
             }
         }
         
-        // Fallback: clean up XML tags
-        text.replace("<", "").replace(">", "").trim().to_string()
+        // Fallback: clean up any JSON or formatting artifacts
+        text.replace("{", "").replace("}", "").replace("\"", "").trim().to_string()
     }
 }
 

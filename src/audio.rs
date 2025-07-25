@@ -30,15 +30,6 @@ impl Default for AudioConfig {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AudioData {
-    pub samples: Vec<f32>,
-    pub sample_rate: u32,
-    pub channels: u16,
-    pub duration_ms: u64,
-    pub has_speech: bool,
-}
-
 pub struct AudioSystem {
     config: AudioConfig,
     input_device: Option<Device>,
@@ -274,61 +265,6 @@ impl AudioSystem {
         )?;
         
         Ok(stream)
-    }
-    
-    pub async fn capture_audio_data(&self, duration_ms: u64) -> Result<AudioData> {
-        if !self.is_initialized {
-            return Err(anyhow!("Audio system not initialized"));
-        }
-        
-        let samples_needed = (self.config.sample_rate as u64 * duration_ms / 1000) as usize;
-        let mut collected_samples = Vec::new();
-        
-        let start_time = std::time::Instant::now();
-        let timeout = std::time::Duration::from_millis(duration_ms + 1000); // Add 1s timeout buffer
-        
-        while collected_samples.len() < samples_needed && start_time.elapsed() < timeout {
-            {
-                let mut buffer = self.audio_buffer.lock().unwrap();
-                while let Some(sample) = buffer.pop_front() {
-                    collected_samples.push(sample);
-                    if collected_samples.len() >= samples_needed {
-                        break;
-                    }
-                }
-            }
-            
-            if collected_samples.len() < samples_needed {
-                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-            }
-        }
-        
-        // Detect if there's speech in the audio
-        let has_speech = self.detect_speech(&collected_samples);
-        
-        debug!("Captured {} audio samples, speech detected: {}", collected_samples.len(), has_speech);
-        
-        Ok(AudioData {
-            samples: collected_samples,
-            sample_rate: self.config.sample_rate,
-            channels: self.config.channels,
-            duration_ms,
-            has_speech,
-        })
-    }
-    
-    fn detect_speech(&self, samples: &[f32]) -> bool {
-        if samples.is_empty() {
-            return false;
-        }
-        
-        // Simple voice activity detection based on RMS energy
-        let rms = {
-            let sum_squares: f32 = samples.iter().map(|&x| x * x).sum();
-            (sum_squares / samples.len() as f32).sqrt()
-        };
-        
-        rms > self.config.voice_detection_threshold
     }
     
     pub async fn speak_text(&mut self, text: &str) -> Result<()> {

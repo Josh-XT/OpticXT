@@ -14,10 +14,8 @@ futures = "0.3"
 
 # Computer Vision and Image Processing - using compatible versions with mistralrs
 image = "0.25"  # Updated to match mistralrs requirements
-imageproc = "0.23"
 
 # Video processing and camera input
-v4l = "0.14"  # Video4Linux for camera access on Linux
 nokhwa = { version = "0.10", features = ["input-v4l"] }
 
 # Machine Learning and UQFF model support - using mistral.rs for modern Gemma 3n UQFF
@@ -26,14 +24,9 @@ tokenizers = "0.21"
 hf-hub = "0.3"  # For model/tokenizer downloading
 either = "1.9"  # Required by mistral.rs
 
-# Unitree Go2 SDK bindings (we'll create a wrapper)
-libc = "0.2"
-bindgen = "0.69"
-
-# Serialization for XML output
+# Serialization for JSON tool calls
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-quick-xml = { version = "0.31", features = ["serialize"] }
 regex = "1.10"
 
 # Logging and error handling

@@ -32,13 +32,13 @@ OpticXT transforms visual and audio input into contextual understanding and imme
 
 ### 🧠 Intelligent AI System
 
-- **Real Model Inference**: Successfully loads and runs Gemma GGUF models with full neural network forward pass
-- **Contextual XML Output**: Generates proper XML commands based on real model computation
+- **Real Model Inference**: Successfully loads and runs Gemma UQFF models with full neural network forward pass
+- **OpenAI Tool Calling**: Modern function call interface with structured JSON output format
 - **Tokenizer Integration**: Full tokenizer support with HuggingFace compatibility  
-- **GGUF Support**: Native support for GGUF model format using candle-core
-- **Performance Optimized**: 140+ tokens/sec inference speed on CPU
-- **Context-Aware Responses**: Real model computation influences output based on visual/audio context
-- **Movement Control**: Direct motor and actuator commands via XML (robot mode)
+- **UQFF Support**: Native support for UQFF quantized models using mistral.rs
+- **Performance Optimized**: Efficient inference with quantization and MatFormer slicing
+- **Context-Aware Responses**: Real model computation influences tool calls based on visual/audio context
+- **Movement Control**: Direct motor and actuator commands via function calls (robot mode)
 - **Voice Synthesis**: Real-time text-to-speech with multiple voice options
 - **Audio Processing**: Real microphone input with noise filtering
 - **Intelligent Fallback**: Graceful degradation when hardware/models unavailable
@@ -56,13 +56,13 @@ OpticXT transforms visual and audio input into contextual understanding and imme
 1. **Visual Input**: Raw video stream from robot cameras
 2. **Context Enrichment**: Vision model adds labels and understanding
 3. **Decision Layer**: Context-aware model processes enriched visuals
-4. **Action Output**: XML-formatted commands for immediate execution
+4. **Action Output**: OpenAI-style function calls for immediate execution
 
 ### Mandatory Context System
 Inherited from AGiXT, OpticXT implements a mandatory context system that functions as a persistent system prompt, ensuring consistent behavior patterns and safety constraints across all operations.
 
 ### Command Execution Framework
-Building on AGiXT's proven command system, OpticXT translates model outputs into real-world actions through a structured XML interface, enabling precise control over:
+Building on AGiXT's proven command system, OpticXT translates model outputs into real-world actions through a structured OpenAI tool calling interface, enabling precise control over:
 - Physical movements and navigation
 - Sensor integration and feedback loops
 - External system communication
@@ -318,22 +318,22 @@ ls -lh models/
 # ✅ Model architecture initialization
 # ✅ Neural network forward pass with real inference
 # ✅ Real token generation from model logits
-# ✅ Context-aware XML output generation from actual model output
+# ✅ Context-aware function call output generation from actual model output
 # ✅ Complete removal of all hardcoded/simulation fallbacks
 
 # 3. Current Behavior:
-# - Models load successfully with real tokenizer (262,400 vocab entries)
-# - Real model inference runs at 140+ tokens/sec with actual neural network computation
-# - XML-formatted robot commands generated from genuine model output
+# - Models load successfully with real tokenizer and UQFF quantization
+# - Real model inference with mistral.rs and multimodal support (text/image/audio)
+# - OpenAI-style function calls generated from genuine model output
 # - System fails gracefully with clear error messages when models unavailable
 # - All functionality (camera, audio, movement) works with real hardware input
 # - NO hardcoded responses or simulation fallbacks whatsoever
 
 # 4. Expected Log Messages:
-# ✅ "Tokenizer loaded successfully"
-# ✅ "Real Gemma model loaded successfully" 
-# ✅ "Model inference successful: generating context-aware response"
-# ❌ "Model inference required - no fallback responses available" (when model missing)
+# ✅ "✅ Successfully loaded HuggingFace Gemma 3n model with multimodal support" 
+# ✅ "Real multimodal model generated text in XXXms"
+# ✅ "Running model inference with X modalities"
+# ❌ "Model inference timed out after 180 seconds" (when model performance issues)
 
 # 5. Error Handling:
 # The system now properly fails with informative errors when:
@@ -405,10 +405,10 @@ OpticXT is built around real hardware components with intelligent fallbacks:
 
 #### AI Model System
 
-- **Model Loading**: Successfully loads GGUF model files and tokenizers
-- **Real Inference**: Full neural network forward pass implementation with 140+ tokens/sec
-- **Context-Aware Responses**: Real model computation influences XML output based on input
-- **XML Generation**: Proper robot control commands generated from actual model logits
+- **Model Loading**: Successfully loads UQFF models with mistral.rs VisionModelBuilder
+- **Real Inference**: Full multimodal neural network inference with text, image, and audio support
+- **Context-Aware Responses**: Real model computation influences function call output based on multimodal input
+- **Tool Call Generation**: OpenAI-style function calls generated from actual model outputs
 - **Intelligent Fallback**: Graceful degradation when models unavailable
 
 ### Dual Mode Architecture
@@ -422,28 +422,42 @@ Microphone ← Audio Processing ← User Interaction
 
 #### Robot Control Mode
 ```
-Sensors → Context Assembly → AI Decision → Action Commands
+Sensors → Context Assembly → AI Decision → Function Calls
    ↑                                         ↓
-Environment ← Robot Actions ← Motor Control ← XML Output
+Environment ← Robot Actions ← Motor Control ← Tool Call Output
 ```
 
 ### Command System (Robot Mode)
 
-OpticXT generates XML-structured commands for precise robot control:
+OpticXT generates OpenAI-style function calls for precise robot control:
 
-```xml
-<!-- Movement commands -->
-<move direction="forward" distance="1.0" speed="slow">
-  Moving forward to investigate detected object
-</move>
+```json
+[{
+  "id": "call_1",
+  "type": "function",
+  "function": {
+    "name": "move",
+    "arguments": "{\"direction\": \"forward\", \"distance\": 1.0, \"speed\": \"slow\", \"reasoning\": \"Moving forward to investigate detected object\"}"
+  }
+}]
 
-<!-- Audio output -->
-<speak>I can see someone approaching</speak>
+[{
+  "id": "call_1",
+  "type": "function",
+  "function": {
+    "name": "speak",
+    "arguments": "{\"text\": \"I can see someone approaching\", \"voice\": \"default\", \"reasoning\": \"Alerting about detected human presence\"}"
+  }
+}]
 
-<!-- Environmental analysis -->
-<analyze target="obstacle" detail_level="detailed">
-  Need to assess navigation path
-</analyze>
+[{
+  "id": "call_1",
+  "type": "function",
+  "function": {
+    "name": "analyze",
+    "arguments": "{\"target\": \"obstacle\", \"detail_level\": \"detailed\", \"reasoning\": \"Need to assess navigation path\"}"
+  }
+}]
 ```
 
 ## Deployment Guide
@@ -476,15 +490,15 @@ OpticXT generates XML-structured commands for precise robot control:
 
 ✅ **Real Camera Input** - Works with any USB/CSI/built-in camera  
 ✅ **Real Audio I/O** - Microphone input and TTS output  
-✅ **Real Model Inference** - Full neural network forward pass with GGUF models at 140+ tokens/sec  
+✅ **Real Model Inference** - Full multimodal neural network inference with UQFF quantization  
 ✅ **Authentic AI Responses** - All text generation from genuine model computation, zero hardcoded fallbacks  
-✅ **Context-Aware XML Output** - Robot control commands based exclusively on actual model logits  
+✅ **OpenAI Tool Calling** - Robot control commands via modern function call interface  
 ✅ **Dual Mode Operation** - Video chat assistant or robot control  
 ✅ **Hardware Auto-Detection** - Real hardware integration with graceful error handling  
-✅ **Edge Deployment Ready** - Optimized for Jetson/Go2 platforms  
+✅ **Edge Deployment Ready** - Optimized for Jetson/Go2 platforms with mistral.rs  
 ✅ **Production Ready** - Real hardware integration with authentic AI inference  
 
-**Status**: Complete removal of all simulation/hardcoded responses. System uses exclusively real neural network inference, real hardware integration, and authentic XML-formatted robot control. Fails gracefully with clear errors when models unavailable.  
+**Status**: Complete removal of all simulation/hardcoded responses. System uses exclusively real neural network inference, real hardware integration, and OpenAI-style function calling for robot control. Features multimodal support (text/image/audio) and fails gracefully with clear errors when models unavailable.  
 
 ## Contributing
 

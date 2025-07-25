@@ -9,13 +9,9 @@ mod pipeline;
 mod commands;
 mod models;
 mod config;
-mod go2_basic;
 mod camera;
 mod audio;
-mod test_uqff;
-mod test_multimodal;
-mod test_simple;
-mod test_image;
+mod tests;
 // mod video_chat;  // Disabled due to winit compatibility issues
 
 use vision_basic as vision;
@@ -75,6 +71,10 @@ struct Args {
     /// Test image inference only
     #[arg(long)]
     test_image: bool,
+    
+    /// Test OpenAI-style tool calling format
+    #[arg(long)]
+    test_tool_format: bool,
 }
 
 #[tokio::main]
@@ -103,28 +103,35 @@ async fn main() -> Result<()> {
     // Check if UQFF test mode is requested
     if args.test_uqff {
         info!("Starting UQFF model test");
-        test_uqff::test_uqff_model().await?;
+        tests::test_uqff_model().await?;
         return Ok(());
     }
     
     // Check if multimodal test mode is requested
     if args.test_multimodal {
         info!("Starting multimodal inference test");
-        test_multimodal::test_multimodal_inference().await?;
+        tests::test_multimodal_inference().await?;
         return Ok(());
     }
     
     // Check if simple test mode is requested
     if args.test_simple {
         info!("Starting simple inference test");
-        test_simple::test_simple_inference().await?;
+        tests::test_simple_inference().await?;
         return Ok(());
     }
     
     // Check if image test mode is requested
     if args.test_image {
         info!("Starting image inference test");
-        test_image::test_image_only().await?;
+        tests::test_image_inference().await?;
+        return Ok(());
+    }
+    
+    // Check if tool format test mode is requested
+    if args.test_tool_format {
+        info!("Starting tool format test");
+        tests::test_tool_format().await?;
         return Ok(());
     }
     
@@ -190,7 +197,7 @@ async fn run_robot_control_mode(args: &Args, config: OpticXTConfig) -> Result<()
     Ok(())
 }
 
-async fn run_benchmark(args: &Args, config: &OpticXTConfig) -> Result<()> {
+async fn run_benchmark(args: &Args, _config: &OpticXTConfig) -> Result<()> {
     use crate::models::{GemmaModel, ModelConfig};
     
     info!("Running benchmark with {} iterations", args.benchmark_iterations);
@@ -276,3 +283,4 @@ async fn run_simulated_benchmark(iterations: usize) -> Result<()> {
     
     Ok(())
 }
+
