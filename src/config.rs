@@ -154,6 +154,7 @@ impl OpticXTConfig {
         Ok(config)
     }
     
+    #[allow(dead_code)]
     pub async fn save<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let content = toml::to_string_pretty(self)?;
         fs::write(path, content).await?;

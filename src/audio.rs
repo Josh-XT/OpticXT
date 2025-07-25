@@ -9,11 +9,17 @@ use tts::Tts;
 
 #[derive(Debug, Clone)]
 pub struct AudioConfig {
+    #[allow(dead_code)]
     pub sample_rate: u32,
+    #[allow(dead_code)]
     pub channels: u16,
+    #[allow(dead_code)]
     pub buffer_size: usize,
+    #[allow(dead_code)]
     pub voice_detection_threshold: f32,
+    #[allow(dead_code)]
     pub silence_duration_ms: u64,
+    #[allow(dead_code)]
     pub speech_timeout_ms: u64,
 }
 
@@ -31,10 +37,12 @@ impl Default for AudioConfig {
 }
 
 pub struct AudioSystem {
+    #[allow(dead_code)]
     config: AudioConfig,
     input_device: Option<Device>,
     output_device: Option<Device>,
     input_stream: Option<Stream>,
+    #[allow(dead_code)]
     audio_buffer: Arc<Mutex<VecDeque<f32>>>,
     is_recording: Arc<Mutex<bool>>,
     tts: Option<Tts>,
@@ -147,6 +155,7 @@ impl AudioSystem {
         Ok(None)
     }
     
+    #[allow(dead_code)]
     pub async fn start_recording(&mut self) -> Result<()> {
         if !self.is_initialized {
             return Err(anyhow!("Audio system not initialized"));
@@ -192,6 +201,7 @@ impl AudioSystem {
         Ok(())
     }
     
+    #[allow(dead_code)]
     fn create_input_stream_f32(
         &self,
         device: &Device,
@@ -217,6 +227,7 @@ impl AudioSystem {
         Ok(stream)
     }
     
+    #[allow(dead_code)]
     fn create_input_stream_i16(
         &self,
         device: &Device,
@@ -242,6 +253,7 @@ impl AudioSystem {
         Ok(stream)
     }
     
+    #[allow(dead_code)]
     fn create_input_stream_u16(
         &self,
         device: &Device,
@@ -291,6 +303,7 @@ impl AudioSystem {
         Ok(())
     }
     
+    #[allow(dead_code)]
     pub async fn play_audio_file(&mut self, file_path: &str) -> Result<()> {
         if let Some(ref sink) = self.output_sink {
             let file = std::fs::File::open(file_path)?;
@@ -308,6 +321,7 @@ impl AudioSystem {
         }
     }
     
+    #[allow(dead_code)]
     pub async fn play_beep(&mut self, frequency: f32, duration_ms: u64) -> Result<()> {
         if let Some(ref sink) = self.output_sink {
             let sample_rate = 44100;
@@ -351,16 +365,19 @@ impl AudioSystem {
         Ok(())
     }
     
+    #[allow(dead_code)]
     pub fn is_recording(&self) -> bool {
         *self.is_recording.lock().unwrap()
     }
     
+    #[allow(dead_code)]
     pub fn clear_audio_buffer(&self) {
         let mut buffer = self.audio_buffer.lock().unwrap();
         buffer.clear();
         debug!("Audio buffer cleared");
     }
     
+    #[allow(dead_code)]  
     pub fn get_audio_info(&self) -> String {
         if self.is_initialized {
             format!(

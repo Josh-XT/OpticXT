@@ -456,6 +456,7 @@ impl VisionProcessor {
         structures
     }
     
+    #[allow(dead_code)]
     fn calculate_average_brightness(&self, image: &DynamicImage) -> f32 {
         let rgb_image = image.to_rgb8();
         let pixels = rgb_image.pixels();
@@ -477,6 +478,7 @@ impl VisionProcessor {
         }
     }
     
+    #[allow(dead_code)]
     fn estimate_edge_density(&self, image: &DynamicImage) -> f32 {
         // Simple edge detection by measuring pixel variation
         let rgb_image = image.to_rgb8();
@@ -507,6 +509,7 @@ impl VisionProcessor {
         }
     }
     
+    #[allow(dead_code)]
     fn pixel_difference(p1: &Rgb<u8>, p2: &Rgb<u8>) -> f32 {
         let dr = p1[0] as f32 - p2[0] as f32;
         let dg = p1[1] as f32 - p2[1] as f32;
@@ -514,6 +517,7 @@ impl VisionProcessor {
         (dr * dr + dg * dg + db * db).sqrt()
     }
     
+    #[allow(dead_code)]
     fn detect_by_color(&self, image: &DynamicImage) -> Vec<DetectedObject> {
         let mut objects = Vec::new();
         let rgb_image = image.to_rgb8();
@@ -546,6 +550,7 @@ impl VisionProcessor {
         objects
     }
     
+    #[allow(dead_code)]
     fn find_color_regions<F>(&self, image: &RgbImage, color_match: F) -> Vec<(i32, i32, i32, i32)>
     where
         F: Fn(u8, u8, u8) -> bool,
@@ -576,6 +581,7 @@ impl VisionProcessor {
         regions
     }
     
+    #[allow(dead_code)]
     fn flood_fill_region<F>(
         &self,
         image: &RgbImage,
@@ -736,6 +742,7 @@ impl VisionProcessor {
         Ok(())
     }
     
+    #[allow(dead_code)]
     pub async fn stop(&mut self) -> Result<()> {
         info!("Stopping VisionProcessor (basic mode)");
         // No longer need to stop go2_system since we use shared camera

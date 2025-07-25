@@ -57,19 +57,24 @@ pub struct CommandExecutionResult {
     pub success: bool,
     pub message: String,
     pub execution_time: Duration,
+    #[allow(dead_code)]
     pub side_effects: Vec<String>,
 }
 
 pub struct CommandExecutor {
+    #[allow(dead_code)]
     enabled_commands: Vec<String>,
+    #[allow(dead_code)]
     timeout_seconds: u64,
     validate_before_execution: bool,
+    #[allow(dead_code)]
     tts_engine: Option<TtsEngine>,
 }
 
 #[derive(Debug)]
 struct TtsEngine {
     // Placeholder for TTS integration
+    #[allow(dead_code)]
     voice: String,
 }
 

@@ -224,22 +224,26 @@ impl ContextManager {
         }
     }
     
+    #[allow(dead_code)]
     pub fn add_environmental_constraint(&mut self, constraint: String) {
         if !self.environmental_constraints.contains(&constraint) {
             self.environmental_constraints.push(constraint);
         }
     }
     
+    #[allow(dead_code)]
     pub fn add_safety_rule(&mut self, rule: String) {
         if !self.safety_rules.contains(&rule) {
             self.safety_rules.push(rule);
         }
     }
     
+    #[allow(dead_code)]
     pub fn get_action_history(&self) -> &VecDeque<ActionHistoryEntry> {
         &self.action_history
     }
     
+    #[allow(dead_code)]
     pub fn clear_action_history(&mut self) {
         self.action_history.clear();
     }

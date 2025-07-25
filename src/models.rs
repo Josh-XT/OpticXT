@@ -11,9 +11,14 @@ use serde_json::json;
 
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
+    // Config fields are kept for future extensibility and test configuration
+    #[allow(dead_code)]
     pub max_tokens: usize,
+    #[allow(dead_code)]
     pub temperature: f32,
+    #[allow(dead_code)]
     pub top_p: f32,
+    #[allow(dead_code)]
     pub context_length: usize,
 }
 
@@ -26,7 +31,9 @@ pub struct GenerationResult {
 
 pub struct GemmaModel {
     model: Arc<mistralrs::Model>,
+    #[allow(dead_code)]
     config: ModelConfig,
+    #[allow(dead_code)]
     model_id: String,
 }
 
@@ -346,14 +353,17 @@ impl GemmaModel {
     }
     
     
+    #[allow(dead_code)]
     pub fn get_config(&self) -> &ModelConfig {
         &self.config
     }
     
+    #[allow(dead_code)]
     pub fn get_device(&self) -> String {
         "Auto (mistral.rs managed)".to_string() // mistral.rs handles device management internally
     }
     
+    #[allow(dead_code)]
     pub fn get_model_id(&self) -> &str {
         &self.model_id
     }

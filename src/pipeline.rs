@@ -274,23 +274,27 @@ impl VisionActionPipeline {
         }
     }
     
+    #[allow(dead_code)]
     fn add_action_overlay(&self, _frame: &mut Mat, result: &CommandExecutionResult) -> Result<()> {
         // Placeholder for action overlay without OpenCV
         debug!("Simulating action overlay: {}", result.message);
         Ok(())
     }
     
+    #[allow(dead_code)]
     pub async fn stop(&self) {
         info!("Stopping pipeline...");
         let mut running = self.running.write().await;
         *running = false;
     }
     
+    #[allow(dead_code)]
     pub async fn is_running(&self) -> bool {
         let running = self.running.read().await;
         *running
     }
     
+    #[allow(dead_code)]
     pub async fn get_stats(&self) -> PipelineStats {
         let context_manager = self.context_manager.read().await;
         let history_count = context_manager.get_action_history().len();
@@ -303,6 +307,7 @@ impl VisionActionPipeline {
         }
     }
     
+    #[allow(dead_code)]
     fn extract_speech_text(&self, text: &str) -> String {
         Self::extract_speech_text_static(text)
     }
@@ -323,6 +328,7 @@ impl VisionActionPipeline {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PipelineStats {
     pub actions_executed: usize,
@@ -332,6 +338,7 @@ pub struct PipelineStats {
 }
 
 // Graceful shutdown handler
+#[allow(dead_code)]
 pub async fn setup_shutdown_handler(_pipeline: Arc<VisionActionPipeline>) -> Result<()> {
     // Note: Camera threading issues prevent spawning for now
     // TODO: Implement proper shutdown handling when camera is Send+Sync
