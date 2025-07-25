@@ -1,10 +1,9 @@
 use anyhow::{Result, anyhow};
 use std::time::SystemTime;
 use tracing::{info, debug, warn, error};
-use image::DynamicImage;
 use nokhwa::{Camera, utils::{RequestedFormat, RequestedFormatType, CameraIndex}};
 use nokhwa::pixel_format::RgbFormat;
-use crate::vision::Mat;
+use crate::vision_basic::Mat;
 
 #[derive(Debug, Clone)]
 pub struct CameraConfig {

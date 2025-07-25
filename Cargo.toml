@@ -14,19 +14,18 @@ futures = "0.3"
 
 # Computer Vision and Image Processing - using more compatible alternatives
 # opencv = "0.88"  # Currently problematic with libclang on this system
-image = "0.24"
+image = "0.25"  # Updated to match mistral.rs version
 imageproc = "0.23"
 
 # Video processing and camera input
 v4l = "0.14"  # Video4Linux for camera access on Linux
 nokhwa = { version = "0.10", features = ["input-v4l"] }
 
-# Machine Learning and GGUF model support
-candle-core = "0.9"
-candle-nn = "0.9"
-candle-transformers = "0.9"
-hf-hub = { version = "0.3", features = ["tokio"] }
+# Machine Learning and Vision Model support - using mistral.rs for modern Gemma 3n
+mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git" }  # Modern multimodal inference backend
 tokenizers = "0.21"
+hf-hub = "0.3"  # For model/tokenizer downloading
+either = "1.9"  # Required by mistral.rs
 
 # Unitree Go2 SDK bindings (we'll create a wrapper)
 libc = "0.2"
