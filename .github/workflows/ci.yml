@@ -263,7 +263,18 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopencv-dev pkg-config cmake build-essential
+        sudo apt-get install -y \
+          libopencv-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libavfilter-dev \
+          libavdevice-dev \
+          pkg-config \
+          cmake \
+          build-essential \
+          libasound2-dev
     
     - name: Build documentation
       run: cargo doc --no-deps --no-default-features --features cpu
