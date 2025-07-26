@@ -4,7 +4,7 @@ Cargo.lock
 **/*.rs.bk
 *.pdb
 output.md
-
+output.ipynb
 # Models and data
 /models/
 *.gguf
