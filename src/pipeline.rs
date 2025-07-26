@@ -69,7 +69,13 @@ impl VisionActionPipeline {
         )));
         
         // Ensure model is downloaded and load it
-        let model_path = model_path.or_else(|| Some(config.model.model_path.clone()));
+        let model_path = model_path.or_else(|| {
+            if config.model.model_path.is_empty() {
+                None // Use default UQFF model
+            } else {
+                Some(config.model.model_path.clone())
+            }
+        });
         if let Some(ref path) = model_path {
             ensure_model_downloaded(path).await?;
         }
@@ -81,7 +87,7 @@ impl VisionActionPipeline {
             context_length: config.model.context_length,
         };
         
-        let model = GemmaModel::load(model_path, model_config).await?;
+        let model = GemmaModel::load(model_path, model_config, config.model.quantization_method.clone(), config.model.isq_type.clone()).await?;
         
         // Initialize command executor
         let command_executor = CommandExecutor::new(
@@ -165,12 +171,15 @@ impl VisionActionPipeline {
     async fn process_single_frame(&mut self) -> Result<()> {
         // Step 1: Capture frame and sensor data from camera system
         let sensor_data = self.camera_system.capture_sensor_data().await?;
+        debug!("📷 Captured camera frame: {}x{}", sensor_data.frame.width, sensor_data.frame.height);
         
         // Step 2: Process frame for object detection and context
         let frame_context = self.vision_processor.process_frame(&sensor_data.frame, &sensor_data).await?;
         
-        debug!("Frame processed: {} | LiDAR points: {}", 
-               frame_context.scene_description, sensor_data.lidar_points.len());
+        debug!("👁️ Vision processed: {} objects detected | Scene: {}", 
+               frame_context.objects.len(), 
+               frame_context.scene_description.chars().take(100).collect::<String>());
+        debug!("🎯 LiDAR data: {} points", sensor_data.lidar_points.len());
         
         // Step 3: Build mandatory context
         let mandatory_context = {
@@ -186,8 +195,30 @@ impl VisionActionPipeline {
         
         debug!("Generated prompt with {} characters", prompt.len());
         
-        // Step 5: Run model inference
-        let generation_result = self.model.generate(&prompt).await?;
+        // Step 5: Run model inference with vision
+        let generation_result = if self.config.vision.enable_multimodal_inference {
+            // Convert camera frame to image for vision model
+            match sensor_data.frame.to_image() {
+                Ok(camera_image) => {
+                    debug!("Sending camera image to vision model for multimodal inference");
+                    match self.model.generate_with_image(&prompt, camera_image).await {
+                        Ok(result) => result,
+                        Err(e) => {
+                            warn!("Vision model inference failed, falling back to text-only: {}", e);
+                            self.model.generate(&prompt).await?
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to convert camera frame to image, using text-only inference: {}", e);
+                    self.model.generate(&prompt).await?
+                }
+            }
+        } else {
+            // Text-only inference (current behavior)
+            debug!("Using text-only inference (multimodal disabled in config)");
+            self.model.generate(&prompt).await?
+        };
         
         debug!(
             "Model generated {} tokens in {}ms: {}",
@@ -243,42 +274,58 @@ impl VisionActionPipeline {
         Ok(())
     }
     
-    fn extract_action_type(&self, xml_output: &str) -> String {
-        // Extract action type from XML output
-        if xml_output.contains("<move") {
+    fn extract_action_type(&self, tool_call_output: &str) -> String {
+        // Extract action type from JSON tool call output
+        if let Ok(tool_calls) = serde_json::from_str::<Vec<serde_json::Value>>(tool_call_output) {
+            if let Some(first_call) = tool_calls.first() {
+                if let Some(function_name) = first_call.get("function")
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str()) 
+                {
+                    return function_name.to_string();
+                }
+            }
+        }
+        
+        // Fallback: try to detect from text content (for compatibility)
+        if tool_call_output.contains("move") {
             "move".to_string()
-        } else if xml_output.contains("<rotate") {
+        } else if tool_call_output.contains("rotate") {
             "rotate".to_string()
-        } else if xml_output.contains("<speak") {
+        } else if tool_call_output.contains("speak") {
             "speak".to_string()
-        } else if xml_output.contains("<analyze") {
+        } else if tool_call_output.contains("analyze") {
             "analyze".to_string()
-        } else if xml_output.contains("<offload") {
-            "offload".to_string()
-        } else if xml_output.contains("<wait") {
+        } else if tool_call_output.contains("wait") {
             "wait".to_string()
+        } else if tool_call_output.contains("stop") {
+            "stop".to_string()
         } else {
             "unknown".to_string()
         }
     }
     
+    #[allow(dead_code)]
     fn add_action_overlay(&self, _frame: &mut Mat, result: &CommandExecutionResult) -> Result<()> {
         // Placeholder for action overlay without OpenCV
         debug!("Simulating action overlay: {}", result.message);
         Ok(())
     }
     
+    #[allow(dead_code)]
     pub async fn stop(&self) {
         info!("Stopping pipeline...");
         let mut running = self.running.write().await;
         *running = false;
     }
     
+    #[allow(dead_code)]
     pub async fn is_running(&self) -> bool {
         let running = self.running.read().await;
         *running
     }
     
+    #[allow(dead_code)]
     pub async fn get_stats(&self) -> PipelineStats {
         let context_manager = self.context_manager.read().await;
         let history_count = context_manager.get_action_history().len();
@@ -291,6 +338,7 @@ impl VisionActionPipeline {
         }
     }
     
+    #[allow(dead_code)]
     fn extract_speech_text(&self, text: &str) -> String {
         Self::extract_speech_text_static(text)
     }
@@ -306,11 +354,12 @@ impl VisionActionPipeline {
             }
         }
         
-        // Fallback: clean up XML tags
-        text.replace("<", "").replace(">", "").trim().to_string()
+        // Fallback: clean up any JSON or formatting artifacts
+        text.replace("{", "").replace("}", "").replace("\"", "").trim().to_string()
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PipelineStats {
     pub actions_executed: usize,
@@ -320,6 +369,7 @@ pub struct PipelineStats {
 }
 
 // Graceful shutdown handler
+#[allow(dead_code)]
 pub async fn setup_shutdown_handler(_pipeline: Arc<VisionActionPipeline>) -> Result<()> {
     // Note: Camera threading issues prevent spawning for now
     // TODO: Implement proper shutdown handling when camera is Send+Sync

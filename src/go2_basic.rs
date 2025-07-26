@@ -1,9 +1,7 @@
 use anyhow::{Result, anyhow};
-use std::time::{Duration, SystemTime};
-use tokio::time::{interval, sleep};
-use tracing::{info, debug, warn, error};
-use image::{DynamicImage, RgbImage, ImageBuffer, Rgb};
-use nokhwa::{Camera, utils::{RequestedFormat, RequestedFormatType, CameraFormat, CameraIndex}};
+use std::time::SystemTime;
+use tracing::{info, debug, warn};
+use nokhwa::{Camera, utils::{RequestedFormat, RequestedFormatType, CameraIndex}};
 use nokhwa::pixel_format::RgbFormat;
 use crate::vision_basic::Mat;
 

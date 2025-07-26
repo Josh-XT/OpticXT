@@ -57,19 +57,24 @@ pub struct CommandExecutionResult {
     pub success: bool,
     pub message: String,
     pub execution_time: Duration,
+    #[allow(dead_code)]
     pub side_effects: Vec<String>,
 }
 
 pub struct CommandExecutor {
+    #[allow(dead_code)]
     enabled_commands: Vec<String>,
+    #[allow(dead_code)]
     timeout_seconds: u64,
     validate_before_execution: bool,
+    #[allow(dead_code)]
     tts_engine: Option<TtsEngine>,
 }
 
 #[derive(Debug)]
 struct TtsEngine {
     // Placeholder for TTS integration
+    #[allow(dead_code)]
     voice: String,
 }
 
@@ -91,11 +96,11 @@ impl CommandExecutor {
         }
     }
     
-    pub async fn parse_and_execute(&self, xml_output: &str) -> Result<CommandExecutionResult> {
-        debug!("Parsing XML command: {}", xml_output);
+    pub async fn parse_and_execute(&self, tool_call_output: &str) -> Result<CommandExecutionResult> {
+        debug!("Parsing tool call command: {}", tool_call_output);
         
-        // Extract the XML command from the model output
-        let command = self.parse_xml_command(xml_output)?;
+        // Extract the tool call command from the model output
+        let command = self.parse_tool_call_command(tool_call_output)?;
         
         // Validate command if enabled
         if self.validate_before_execution {
@@ -106,72 +111,61 @@ impl CommandExecutor {
         self.execute_command(command).await
     }
     
-    fn parse_xml_command(&self, xml_output: &str) -> Result<ActionCommand> {
-        // Clean up the XML output - model might include extra text
-        let xml_content = self.extract_xml_from_text(xml_output)?;
+    fn parse_tool_call_command(&self, tool_call_output: &str) -> Result<ActionCommand> {
+        // Parse the JSON tool call output
+        let tool_calls: Vec<serde_json::Value> = serde_json::from_str(tool_call_output)
+            .map_err(|e| anyhow!("Failed to parse tool call JSON: {}", e))?;
         
-        // Try to parse different command types
-        if let Ok(command) = self.try_parse_move(&xml_content) {
-            return Ok(command);
-        }
-        if let Ok(command) = self.try_parse_rotate(&xml_content) {
-            return Ok(command);
-        }
-        if let Ok(command) = self.try_parse_speak(&xml_content) {
-            return Ok(command);
-        }
-        if let Ok(command) = self.try_parse_analyze(&xml_content) {
-            return Ok(command);
-        }
-        if let Ok(command) = self.try_parse_offload(&xml_content) {
-            return Ok(command);
-        }
-        if let Ok(command) = self.try_parse_wait(&xml_content) {
-            return Ok(command);
+        if tool_calls.is_empty() {
+            return Err(anyhow!("No tool calls found in output"));
         }
         
-        Err(anyhow!("Failed to parse XML command: {}", xml_content))
+        // Get the first tool call
+        let tool_call = &tool_calls[0];
+        let function = tool_call.get("function")
+            .ok_or_else(|| anyhow!("No function found in tool call"))?;
+        
+        let function_name = function.get("name")
+            .and_then(|n| n.as_str())
+            .ok_or_else(|| anyhow!("No function name found"))?;
+        
+        let arguments_str = function.get("arguments")
+            .and_then(|a| a.as_str())
+            .ok_or_else(|| anyhow!("No function arguments found"))?;
+        
+        let arguments: serde_json::Value = serde_json::from_str(arguments_str)
+            .map_err(|e| anyhow!("Failed to parse function arguments: {}", e))?;
+        
+        // Parse based on function name
+        match function_name {
+            "move" => self.parse_move_from_json(&arguments),
+            "rotate" => self.parse_rotate_from_json(&arguments),
+            "speak" => self.parse_speak_from_json(&arguments),
+            "analyze" => self.parse_analyze_from_json(&arguments),
+            "wait" => self.parse_wait_from_json(&arguments),
+            "stop" => self.parse_stop_from_json(&arguments),
+            _ => Err(anyhow!("Unknown function name: {}", function_name))
+        }
     }
     
-    fn extract_xml_from_text(&self, text: &str) -> Result<String> {
-        // Look for XML tags in the text
-        let xml_patterns = vec![
-            r"<move[^>]*>.*?</move>",
-            r"<rotate[^>]*>.*?</rotate>",
-            r"<speak[^>]*>.*?</speak>",
-            r"<analyze[^>]*>.*?</analyze>",
-            r"<offload[^>]*>.*?</offload>",
-            r"<wait[^>]*>.*?</wait>",
-            r"<move[^>]*/>",
-            r"<rotate[^>]*/>",
-            r"<analyze[^>]*/>",
-            r"<wait[^>]*/>",
-        ];
-        
-        for pattern in xml_patterns {
-            if let Ok(regex) = regex::Regex::new(pattern) {
-                if let Some(captures) = regex.find(text) {
-                    return Ok(captures.as_str().to_string());
-                }
-            }
-        }
-        
-        // If no XML found, check if it's a simple tag
-        if text.contains('<') && text.contains('>') {
-            return Ok(text.trim().to_string());
-        }
-        
-        Err(anyhow!("No valid XML command found in text: {}", text))
-    }
     
-    fn try_parse_move(&self, xml: &str) -> Result<ActionCommand> {
-        // Parse move command attributes
-        let direction = self.extract_attribute(xml, "direction")?;
-        let distance = self.extract_attribute(xml, "distance")?
-            .parse::<f32>()
-            .map_err(|_| anyhow!("Invalid distance value"))?;
-        let speed = self.extract_attribute(xml, "speed").unwrap_or_else(|_| "normal".to_string());
-        let reasoning = self.extract_text_content(xml).unwrap_or_default();
+    // JSON-based parsing functions for OpenAI tool calls
+    fn parse_move_from_json(&self, args: &serde_json::Value) -> Result<ActionCommand> {
+        let direction = args.get("direction")
+            .and_then(|v| v.as_str())
+            .unwrap_or("forward")
+            .to_string();
+        let distance = args.get("distance")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.5) as f32;
+        let speed = args.get("speed")
+            .and_then(|v| v.as_str())
+            .unwrap_or("normal")
+            .to_string();
+        let reasoning = args.get("reasoning")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         
         Ok(ActionCommand::Move {
             direction,
@@ -181,12 +175,18 @@ impl CommandExecutor {
         })
     }
     
-    fn try_parse_rotate(&self, xml: &str) -> Result<ActionCommand> {
-        let direction = self.extract_attribute(xml, "direction")?;
-        let angle = self.extract_attribute(xml, "angle")?
-            .parse::<f32>()
-            .map_err(|_| anyhow!("Invalid angle value"))?;
-        let reasoning = self.extract_text_content(xml).unwrap_or_default();
+    fn parse_rotate_from_json(&self, args: &serde_json::Value) -> Result<ActionCommand> {
+        let direction = args.get("direction")
+            .and_then(|v| v.as_str())
+            .unwrap_or("left")
+            .to_string();
+        let angle = args.get("angle")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(30.0) as f32;
+        let reasoning = args.get("reasoning")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         
         Ok(ActionCommand::Rotate {
             direction,
@@ -195,10 +195,19 @@ impl CommandExecutor {
         })
     }
     
-    fn try_parse_speak(&self, xml: &str) -> Result<ActionCommand> {
-        let text = self.extract_text_content(xml)?;
-        let voice = self.extract_attribute(xml, "voice").unwrap_or_else(|_| "default".to_string());
-        let reasoning = self.extract_attribute(xml, "reasoning").unwrap_or_default();
+    fn parse_speak_from_json(&self, args: &serde_json::Value) -> Result<ActionCommand> {
+        let text = args.get("text")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Text is required for speak command"))?
+            .to_string();
+        let voice = args.get("voice")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .to_string();
+        let reasoning = args.get("reasoning")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         
         Ok(ActionCommand::Speak {
             text,
@@ -207,10 +216,17 @@ impl CommandExecutor {
         })
     }
     
-    fn try_parse_analyze(&self, xml: &str) -> Result<ActionCommand> {
-        let target = self.extract_attribute(xml, "target").ok();
-        let detail_level = self.extract_attribute(xml, "detail_level").ok();
-        let reasoning = self.extract_text_content(xml).unwrap_or_default();
+    fn parse_analyze_from_json(&self, args: &serde_json::Value) -> Result<ActionCommand> {
+        let target = args.get("target")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let detail_level = args.get("detail_level")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let reasoning = args.get("reasoning")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         
         Ok(ActionCommand::Analyze {
             target,
@@ -219,25 +235,14 @@ impl CommandExecutor {
         })
     }
     
-    fn try_parse_offload(&self, xml: &str) -> Result<ActionCommand> {
-        let task_description = self.extract_text_content(xml)?;
-        let target_agent = self.extract_attribute(xml, "target_agent").ok();
-        let priority = self.extract_attribute(xml, "priority").ok();
-        let reasoning = self.extract_attribute(xml, "reasoning").unwrap_or_default();
-        
-        Ok(ActionCommand::Offload {
-            task_description,
-            target_agent,
-            priority,
-            reasoning,
-        })
-    }
-    
-    fn try_parse_wait(&self, xml: &str) -> Result<ActionCommand> {
-        let duration = self.extract_attribute(xml, "duration")
-            .ok()
-            .and_then(|d| d.parse::<f32>().ok());
-        let reasoning = self.extract_text_content(xml).unwrap_or_default();
+    fn parse_wait_from_json(&self, args: &serde_json::Value) -> Result<ActionCommand> {
+        let duration = args.get("duration")
+            .and_then(|v| v.as_f64())
+            .map(|d| d as f32);
+        let reasoning = args.get("reasoning")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         
         Ok(ActionCommand::Wait {
             duration,
@@ -245,27 +250,20 @@ impl CommandExecutor {
         })
     }
     
-    fn extract_attribute(&self, xml: &str, attr_name: &str) -> Result<String> {
-        let pattern = format!(r#"{}="([^"]*)""#, attr_name);
-        if let Ok(regex) = regex::Regex::new(&pattern) {
-            if let Some(captures) = regex.captures(xml) {
-                return Ok(captures[1].to_string());
-            }
-        }
+    fn parse_stop_from_json(&self, args: &serde_json::Value) -> Result<ActionCommand> {
+        let _immediate = args.get("immediate")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        let reasoning = args.get("reasoning")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         
-        Err(anyhow!("Attribute {} not found", attr_name))
-    }
-    
-    fn extract_text_content(&self, xml: &str) -> Result<String> {
-        if let Some(start) = xml.find('>') {
-            if let Some(end) = xml.rfind('<') {
-                if start < end {
-                    return Ok(xml[start + 1..end].trim().to_string());
-                }
-            }
-        }
-        
-        Err(anyhow!("No text content found"))
+        // Map to Wait with duration 0 for immediate stop
+        Ok(ActionCommand::Wait {
+            duration: Some(0.0),
+            reasoning: format!("STOP - {}", reasoning),
+        })
     }
     
     fn validate_command(&self, command: &ActionCommand) -> Result<()> {

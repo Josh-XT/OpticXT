@@ -8,10 +8,15 @@ height = 480
 fps = 30
 confidence_threshold = 0.5
 vision_model = "yolo"  # Options: yolo, coco, custom
+enable_multimodal_inference = true  # Send actual camera images to vision model
 
 [model]
 # Gemma model configuration
-model_path = "models/gemma-3n-E4B-it-Q4_K_M.gguf"
+# Quantization method: "uqff" (faster inference, slower loading) or "isq" (fast loading, in-place quantization)
+quantization_method = "isq"  # Options: "uqff", "isq"
+# ISQ quantization type: Q4K (recommended), Q2K (smallest), Q5K (more accurate), Q8_0 (high quality)
+isq_type = "Q4K"  # Options: Q2K, Q3K, Q4K, Q5K, Q6K, Q8_0, Q8_1
+model_path = ""  # Leave empty to use default model
 context_length = 4096
 temperature = 0.7
 top_p = 0.9

@@ -25,12 +25,16 @@ pub struct VisionConfig {
     pub confidence_threshold: f32,
     /// Vision model for labeling (can be local or API-based)
     pub vision_model: String,
+    /// Enable multimodal inference (send actual camera images to model)
+    pub enable_multimodal_inference: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelConfig {
     /// Path to the GGUF model file
     pub model_path: String,
+    pub quantization_method: String, // "uqff" or "isq"
+    pub isq_type: String, // ISQ quantization type: Q2K, Q3K, Q4K, Q5K, Q6K, Q8_0, Q8_1
     /// Model context length
     pub context_length: usize,
     /// Temperature for generation
@@ -96,9 +100,12 @@ impl Default for OpticXTConfig {
                 fps: 30,
                 confidence_threshold: 0.5,
                 vision_model: "yolo".to_string(),
+                enable_multimodal_inference: true, // Enable by default for vision models
             },
             model: ModelConfig {
-                model_path: "models/gemma-3n-E4B-it-Q4_K_M.gguf".to_string(),
+                model_path: "".to_string(), // Use default model
+                quantization_method: "isq".to_string(), // Default to ISQ for fast loading
+                isq_type: "Q4K".to_string(), // Default to Q4K (good balance of speed/quality)
                 context_length: 4096,
                 temperature: 0.7,
                 top_p: 0.9,
@@ -154,6 +161,7 @@ impl OpticXTConfig {
         Ok(config)
     }
     
+    #[allow(dead_code)]
     pub async fn save<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let content = toml::to_string_pretty(self)?;
         fs::write(path, content).await?;

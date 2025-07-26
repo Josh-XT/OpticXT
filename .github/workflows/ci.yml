@@ -1,0 +1,208 @@
+name: CI Build and Test
+
+on:
+  push:
+    branches: [ main, "Add-UQFF-model-support" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build-cpu:
+    name: Build (CPU only)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libopencv-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libavfilter-dev \
+          libavdevice-dev \
+          pkg-config \
+          cmake \
+          build-essential \
+          libasound2-dev \
+          libspeechd-dev
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache target directory
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-target-cpu-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Build (CPU only)
+      run: cargo build --verbose --no-default-features --features "cpu"
+    
+    - name: Run unit tests
+      run: cargo test --lib --no-default-features --features "cpu"
+    
+    - name: Run integration tests
+      run: cargo test --test integration_tests --no-default-features --features "cpu"
+
+  test-compilation:
+    name: Test Function Compilation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libopencv-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libavfilter-dev \
+          libavdevice-dev \
+          pkg-config \
+          cmake \
+          build-essential \
+          libasound2-dev \
+          libspeechd-dev
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Verify test functions exist
+      run: |
+        echo "Checking that all test functions are defined..."
+        grep -n "pub async fn test_" src/tests.rs || {
+          echo "ERROR: Test functions not found in src/tests.rs"
+          exit 1
+        }
+        
+        echo "Checking that main.rs references test functions..."
+        grep -n "tests::" src/main.rs || {
+          echo "ERROR: Test function calls not found in src/main.rs"
+          exit 1
+        }
+    
+    - name: Compile tests module
+      run: |
+        cargo check --lib --no-default-features --features cpu
+        echo "✅ Test module compiles successfully"
+    
+    - name: Verify CLI test options
+      run: |
+        cargo build --no-default-features --features cpu --quiet
+        echo "Checking available test CLI options..."
+        ./target/debug/opticxt --help | grep -E "(test-|Test)" || {
+          echo "Test options found in help:"
+          ./target/debug/opticxt --help | grep -A 20 -B 5 "test"
+        }
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+    
+    - name: Run security audit
+      run: cargo audit
+
+  check-dependencies:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install cargo-outdated
+      run: cargo install cargo-outdated
+    
+    - name: Check for outdated dependencies
+      run: cargo outdated --exit-code 1 || echo "Some dependencies are outdated (non-blocking)"
+    
+    - name: Check dependency tree
+      run: cargo tree --duplicates
+
+  documentation:
+    name: Documentation Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libopencv-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libavfilter-dev \
+          libavdevice-dev \
+          pkg-config \
+          cmake \
+          build-essential \
+          libasound2-dev \
+          libspeechd-dev
+    
+    - name: Build documentation
+      run: cargo doc --no-deps --no-default-features --features cpu
+    
+    - name: Check README links
+      run: |
+        # Basic check that README.md exists and has key sections
+        test -f README.md || {
+          echo "ERROR: README.md not found"
+          exit 1
+        }
+        
+        grep -i "# OpticXT" README.md || {
+          echo "ERROR: README.md missing project title"
+          exit 1
+        }
+        
+        grep -i "installation" README.md || {
+          echo "WARNING: README.md missing installation section"
+        }
+        
+        grep -i "usage" README.md || {
+          echo "WARNING: README.md missing usage section"
+        }
+        
+        echo "✅ README.md basic structure check passed"

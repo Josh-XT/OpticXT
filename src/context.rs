@@ -131,11 +131,19 @@ impl ContextManager {
         
         // Action request
         prompt.push_str("REQUIRED OUTPUT:\n");
-        prompt.push_str("Based on the current visual input and context, generate the appropriate action command in XML format. ");
-        prompt.push_str("Available commands: <move>, <rotate>, <speak>, <analyze>, <offload>. ");
-        prompt.push_str("Always include reasoning for your decision. ");
-        prompt.push_str("If no action is needed, output <wait> with reasoning.\n\n");
-        prompt.push_str("ACTION:");
+        prompt.push_str("Based on the current visual input and context, respond with an appropriate action using OpenAI-style tool calling. ");
+        prompt.push_str("Available functions: move, rotate, speak, analyze, wait, stop. ");
+        prompt.push_str("Always include reasoning in the function arguments. ");
+        prompt.push_str("If no action is needed, use the 'wait' function with reasoning.\n\n");
+        prompt.push_str("RESPONSE:");
+        
+        // Aggressively limit prompt length to prevent token explosion
+        const MAX_PROMPT_CHARS: usize = 4000; // Conservative limit
+        if prompt.len() > MAX_PROMPT_CHARS {
+            debug!("Prompt too long ({} chars), truncating to {}", prompt.len(), MAX_PROMPT_CHARS);
+            prompt.truncate(MAX_PROMPT_CHARS);
+            prompt.push_str("\n\n[TRUNCATED] Respond based on available context.\nACTION:");
+        }
         
         debug!("Generated model prompt with {} characters", prompt.len());
         prompt
@@ -150,14 +158,23 @@ impl ContextManager {
             frame_context.frame_size.1
         ));
         
+        // Truncate scene description if it's too long
+        let scene_desc = if frame_context.scene_description.len() > 500 {
+            let truncated = &frame_context.scene_description[..500];
+            format!("{}... [truncated]", truncated)
+        } else {
+            frame_context.scene_description.clone()
+        };
+        
         context.push_str(&format!(
             "Scene description: {}\n",
-            frame_context.scene_description
+            scene_desc
         ));
         
         if !frame_context.objects.is_empty() {
             context.push_str("Detected objects:\n");
-            for obj in &frame_context.objects {
+            // Limit to first 5 objects to prevent context explosion
+            for obj in frame_context.objects.iter().take(5) {
                 context.push_str(&format!(
                     "- {} at ({}, {}) with size {}x{}, confidence: {:.2}\n",
                     obj.label,
@@ -168,8 +185,17 @@ impl ContextManager {
                     obj.confidence
                 ));
             }
+            if frame_context.objects.len() > 5 {
+                context.push_str(&format!("... and {} more objects\n", frame_context.objects.len() - 5));
+            }
         } else {
             context.push_str("No objects detected in current frame.\n");
+        }
+        
+        // Ensure visual context doesn't exceed reasonable size
+        if context.len() > 1000 {
+            context.truncate(1000);
+            context.push_str("... [truncated for length]");
         }
         
         context
@@ -198,22 +224,26 @@ impl ContextManager {
         }
     }
     
+    #[allow(dead_code)]
     pub fn add_environmental_constraint(&mut self, constraint: String) {
         if !self.environmental_constraints.contains(&constraint) {
             self.environmental_constraints.push(constraint);
         }
     }
     
+    #[allow(dead_code)]
     pub fn add_safety_rule(&mut self, rule: String) {
         if !self.safety_rules.contains(&rule) {
             self.safety_rules.push(rule);
         }
     }
     
+    #[allow(dead_code)]
     pub fn get_action_history(&self) -> &VecDeque<ActionHistoryEntry> {
         &self.action_history
     }
     
+    #[allow(dead_code)]
     pub fn clear_action_history(&mut self) {
         self.action_history.clear();
     }

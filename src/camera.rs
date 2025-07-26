@@ -1,16 +1,18 @@
 use anyhow::{Result, anyhow};
 use std::time::SystemTime;
 use tracing::{info, debug, warn, error};
-use image::DynamicImage;
 use nokhwa::{Camera, utils::{RequestedFormat, RequestedFormatType, CameraIndex}};
 use nokhwa::pixel_format::RgbFormat;
-use crate::vision::Mat;
+use crate::vision_basic::Mat;
 
 #[derive(Debug, Clone)]
 pub struct CameraConfig {
     pub camera_id: i32,
+    #[allow(dead_code)]
     pub width: i32,
+    #[allow(dead_code)]
     pub height: i32,
+    #[allow(dead_code)]
     pub fps: f64,
 }
 
@@ -18,17 +20,22 @@ pub struct CameraConfig {
 pub struct LidarPoint {
     pub x: f64,
     pub y: f64,
+    #[allow(dead_code)]
     pub z: f64,
     pub distance: f64,
+    #[allow(dead_code)]
     pub angle: f64,
+    #[allow(dead_code)]
     pub intensity: f64,
 }
 
 #[derive(Debug, Clone)]
 pub struct SensorData {
+    #[allow(dead_code)]
     pub timestamp: SystemTime,
     pub frame: Mat,
     pub lidar_points: Vec<LidarPoint>,
+    #[allow(dead_code)]
     pub has_lidar: bool,
 }
 
@@ -305,6 +312,7 @@ impl CameraSystem {
         }
     }
     
+    #[allow(dead_code)]
     pub async fn stop(&mut self) -> Result<()> {
         info!("Stopping camera system");
         
@@ -321,6 +329,7 @@ impl CameraSystem {
         Ok(())
     }
     
+    #[allow(dead_code)]
     pub fn get_camera_info(&self) -> Result<String> {
         if let Some(ref _camera) = self.camera {
             Ok(format!("Camera {} - Active", self.config.camera_id))
