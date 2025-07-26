@@ -13,14 +13,6 @@ OpticXT is a high-performance, real-time robot control system combining computer
 
 OpticXT transforms visual and audio input into contextual understanding and immediate robotic actions through GPU-accelerated inference.
 
-### Demo
-
-<p align="center">
-  <img src="https://via.placeholder.com/800x400/2B2B2B/00D4AA?text=OpticXT+CUDA+Demo+%E2%80%A2+RTX+4090" alt="OpticXT running with CUDA acceleration" width="600">
-</p>
-
-*Real-time inference on RTX 4090: Model loading in 22s, 36% GPU utilization during continuous processing.*
-
 ## Key Features
 
 ### 🚀 GPU-Accelerated AI Inference
