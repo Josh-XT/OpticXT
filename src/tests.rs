@@ -12,7 +12,7 @@ pub async fn test_simple_inference() -> Result<()> {
         context_length: 2048,
     };
     
-    let mut model = GemmaModel::load(None, config).await?;
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
     
     let test_prompts = vec![
         "What do you see in this environment?",
@@ -51,7 +51,7 @@ pub async fn test_image_inference() -> Result<()> {
         context_length: 2048,
     };
     
-    let mut model = GemmaModel::load(None, config).await?;
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
     
     // Create a test image (simple red square)
     let test_image = create_test_image();
@@ -93,7 +93,7 @@ pub async fn test_multimodal_inference() -> Result<()> {
         context_length: 2048,
     };
     
-    let mut model = GemmaModel::load(None, config).await?;
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
     
     // Test 1: Text-only inference
     println!("\n🧪 Test 1: Text-only inference");
@@ -150,7 +150,7 @@ pub async fn test_uqff_model() -> Result<()> {
     };
     
     // Load the UQFF model specifically
-    let mut model = GemmaModel::load(Some("EricB/gemma-3n-E4B-it-UQFF".to_string()), config).await?;
+    let mut model = GemmaModel::load(Some("EricB/gemma-3n-E4B-it-UQFF".to_string()), config, "uqff".to_string(), "Q4K".to_string()).await?;
     
     let test_cases = vec![
         ("Simple greeting", "Hello! How are you?"),
@@ -201,7 +201,7 @@ pub async fn test_tool_format() -> Result<()> {
         context_length: 2048,
     };
     
-    let mut model = GemmaModel::load(None, config).await?;
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
     
     let test_prompts = vec![
         ("Move command", "Move forward to explore"),

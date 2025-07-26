@@ -212,7 +212,7 @@ async fn run_benchmark(args: &Args, _config: &OpticXTConfig) -> Result<()> {
     };
     
     info!("Initializing model for benchmark...");
-    let mut model = match GemmaModel::load(model_path, model_config).await {
+    let mut model = match GemmaModel::load(model_path, model_config, "isq".to_string(), "Q4K".to_string()).await {
         Ok(m) => {
             info!("Model loaded successfully for benchmark");
             m

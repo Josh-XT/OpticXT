@@ -69,7 +69,13 @@ impl VisionActionPipeline {
         )));
         
         // Ensure model is downloaded and load it
-        let model_path = model_path.or_else(|| Some(config.model.model_path.clone()));
+        let model_path = model_path.or_else(|| {
+            if config.model.model_path.is_empty() {
+                None // Use default UQFF model
+            } else {
+                Some(config.model.model_path.clone())
+            }
+        });
         if let Some(ref path) = model_path {
             ensure_model_downloaded(path).await?;
         }
@@ -81,7 +87,7 @@ impl VisionActionPipeline {
             context_length: config.model.context_length,
         };
         
-        let model = GemmaModel::load(model_path, model_config).await?;
+        let model = GemmaModel::load(model_path, model_config, config.model.quantization_method.clone(), config.model.isq_type.clone()).await?;
         
         // Initialize command executor
         let command_executor = CommandExecutor::new(

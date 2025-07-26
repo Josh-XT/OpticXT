@@ -31,6 +31,8 @@ pub struct VisionConfig {
 pub struct ModelConfig {
     /// Path to the GGUF model file
     pub model_path: String,
+    pub quantization_method: String, // "uqff" or "isq"
+    pub isq_type: String, // ISQ quantization type: Q2K, Q3K, Q4K, Q5K, Q6K, Q8_0, Q8_1
     /// Model context length
     pub context_length: usize,
     /// Temperature for generation
@@ -98,7 +100,9 @@ impl Default for OpticXTConfig {
                 vision_model: "yolo".to_string(),
             },
             model: ModelConfig {
-                model_path: "models/gemma-3n-E4B-it-Q4_K_M.gguf".to_string(),
+                model_path: "".to_string(), // Use default model
+                quantization_method: "isq".to_string(), // Default to ISQ for fast loading
+                isq_type: "Q4K".to_string(), // Default to Q4K (good balance of speed/quality)
                 context_length: 4096,
                 temperature: 0.7,
                 top_p: 0.9,

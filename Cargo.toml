@@ -2,10 +2,10 @@
 name = "opticxt"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
-description = "Vision-Driven Autonomous Robot Control System"
+authors = ["Josh-XT <josh@josh-xt.com>"]
+description = "Vision-Driven Autonomous Robot Control System with GPU-Accelerated ISQ Inference"
 license = "MIT"
-repository = "https://github.com/yourusername/OpticXT"
+repository = "https://github.com/Josh-XT/OpticXT"
 
 [dependencies]
 # Core async runtime
@@ -18,16 +18,14 @@ image = "0.25"  # Updated to match mistralrs requirements
 # Video processing and camera input
 nokhwa = { version = "0.10", features = ["input-v4l"] }
 
-# Machine Learning and UQFF model support - using mistral.rs for modern Gemma 3n UQFF
-mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git" }  # Modern UQFF vision inference backend
-tokenizers = "0.21"
-hf-hub = "0.3"  # For model/tokenizer downloading
+# Machine Learning with ISQ support - using mistral.rs for GPU-accelerated inference
+mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git", default-features = false }
+hf-hub = "0.3"  # For automatic model downloading
 either = "1.9"  # Required by mistral.rs
 
-# Serialization for JSON tool calls
+# Serialization for OpenAI-style tool calls
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-regex = "1.10"
 
 # Logging and error handling
 tracing = "0.1"
@@ -40,25 +38,15 @@ config = "0.14"
 toml = "0.8"
 clap = { version = "4.0", features = ["derive"] }
 
-# Networking for offloading
-reqwest = { version = "0.11", features = ["json"] }
-uuid = { version = "1.0", features = ["v4"] }
-
 # Real-time processing
 crossbeam = "0.8"
 parking_lot = "0.12"
-rand = "0.8"  # For model sampling
+rand = "0.8"  # For benchmark simulation
 
 # Audio processing for voice input/output
 rodio = "0.17"  # Audio playback
 cpal = "0.15"   # Cross-platform audio I/O
 tts = "0.26"    # Text-to-speech
-# speech-recognition = { version = "0.1", optional = true }  # Not available, would need custom implementation
-
-# Real-time video display (disabled for now due to compatibility issues)
-# pixels = "0.13"      # For video rendering
-# winit = "0.29"       # Window management  
-# pollster = "0.3"     # Async executor for graphics
 
 [dev-dependencies]
 criterion = "0.5"
@@ -66,6 +54,10 @@ criterion = "0.5"
 [[bin]]
 name = "opticxt"
 path = "src/main.rs"
+
+[features]
+default = ["cuda"]
+cuda = ["mistralrs/cuda"]
 
 [profile.release]
 opt-level = 3

@@ -97,11 +97,15 @@ impl VisionProcessor {
         // Perform basic object detection using image analysis
         let objects = self.basic_detection(frame)?;
         
-        // Filter by confidence threshold
-        let filtered_objects: Vec<DetectedObject> = objects
+        // Filter by confidence threshold and limit quantity to prevent spam
+        let mut filtered_objects: Vec<DetectedObject> = objects
             .into_iter()
             .filter(|obj| obj.confidence >= self.confidence_threshold)
             .collect();
+        
+        // Sort by confidence and keep only the most relevant objects (max 10)
+        filtered_objects.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        filtered_objects.truncate(10);
         
         let scene_description = self.generate_scene_description(&filtered_objects, &sensor_data.lidar_points);
         
@@ -114,7 +118,7 @@ impl VisionProcessor {
     }
     
     fn basic_detection(&self, frame: &Mat) -> Result<Vec<DetectedObject>> {
-        debug!("Running real object detection using image analysis");
+        debug!("Running optimized object detection with spam prevention");
         
         let mut objects = Vec::new();
         let (_width, _height) = (frame.cols(), frame.rows());
@@ -122,26 +126,29 @@ impl VisionProcessor {
         // Convert to image for analysis
         let image = frame.to_image()?;
         
-        // Real computer vision detection using image analysis
+        // Real computer vision detection using image analysis with stricter thresholds
         
-        // 1. Person detection using skin tone and face-like regions
+        // 1. Person detection using skin tone and face-like regions (higher confidence needed)
         let person_objects = self.detect_people(&image)?;
-        objects.extend(person_objects);
+        objects.extend(person_objects.into_iter().filter(|obj| obj.confidence > 0.6));
         
-        // 2. Object detection using edge and color analysis
+        // 2. Major object detection using edge and color analysis (reduce sensitivity)
         let shape_objects = self.detect_objects_by_shape(&image)?; 
-        objects.extend(shape_objects);
+        objects.extend(shape_objects.into_iter().filter(|obj| obj.confidence > 0.7));
         
-        // 3. Motion detection (if we had previous frame)
+        // 3. Motion detection (if we had previous frame) - only high-activity regions
         let motion_objects = self.detect_motion_regions(&image)?;
-        objects.extend(motion_objects);
+        objects.extend(motion_objects.into_iter().filter(|obj| obj.confidence > 0.8));
         
-        // 4. Scene analysis for furniture/large objects
+        // 4. Only detect major furniture/large objects to avoid clutter
         let furniture_objects = self.detect_furniture(&image)?;
-        objects.extend(furniture_objects);
+        objects.extend(furniture_objects.into_iter().filter(|obj| obj.confidence > 0.7));
         
-        debug!("Real detection found {} objects", objects.len());
-        Ok(objects)
+        // Merge overlapping detections to prevent duplicates
+        let merged_objects = self.merge_overlapping_detections(objects);
+        
+        debug!("Filtered detection found {} high-confidence objects", merged_objects.len());
+        Ok(merged_objects)
     }
     
     fn detect_people(&self, image: &DynamicImage) -> Result<Vec<DetectedObject>> {
@@ -263,14 +270,15 @@ impl VisionProcessor {
     fn find_rectangles(&self, edges: &[Vec<f32>], width: u32, height: u32) -> Vec<(i32, i32, i32, i32, f32)> {
         let mut rectangles = Vec::new();
         
-        // Simple rectangle detection using edge accumulation
-        for y in (20..height - 20).step_by(20) {
-            for x in (20..width - 20).step_by(20) {
-                let edge_score = self.calculate_rectangular_score(edges, x as usize, y as usize, 40, 30);
+        // Simple rectangle detection using edge accumulation with higher thresholds
+        for y in (40..height - 40).step_by(40) {  // Increased step size and margins
+            for x in (40..width - 40).step_by(40) {
+                let edge_score = self.calculate_rectangular_score(edges, x as usize, y as usize, 60, 45);
                 
-                if edge_score > 15.0 {
-                    let confidence = (edge_score / 30.0).min(0.9);
-                    rectangles.push((x as i32, y as i32, 40, 30, confidence));
+                // Much higher threshold to reduce false positives
+                if edge_score > 30.0 {
+                    let confidence = (edge_score / 50.0).min(0.9);
+                    rectangles.push((x as i32, y as i32, 60, 45, confidence));
                 }
             }
         }
@@ -312,20 +320,21 @@ impl VisionProcessor {
         let rgb_image = image.to_rgb8();
         let (width, height) = rgb_image.dimensions();
         
-        // Detect high-variance regions that might indicate activity
-        for y in (0..height - 32).step_by(16) {
-            for x in (0..width - 32).step_by(16) {
-                let variance = self.calculate_region_variance(&rgb_image, x, y, 32, 32);
+        // Detect high-variance regions that might indicate activity with stricter thresholds
+        for y in (0..height - 64).step_by(32) {  // Larger regions, less frequent sampling
+            for x in (0..width - 64).step_by(32) {
+                let variance = self.calculate_region_variance(&rgb_image, x, y, 64, 64);
                 
-                if variance > 800.0 {
+                // Much higher threshold to reduce false motion detections
+                if variance > 1500.0 {
                     motion_objects.push(DetectedObject {
                         label: "active_region".to_string(),
-                        confidence: (variance / 2000.0).min(0.8),
+                        confidence: (variance / 3000.0).min(0.8),
                         bbox: BoundingBox {
                             x: x as i32,
                             y: y as i32,
-                            width: 32,
-                            height: 32,
+                            width: 64,
+                            height: 64,
                         },
                     });
                 }
@@ -638,47 +647,116 @@ impl VisionProcessor {
         }
     }
     
+    fn merge_overlapping_detections(&self, mut objects: Vec<DetectedObject>) -> Vec<DetectedObject> {
+        if objects.len() <= 1 {
+            return objects;
+        }
+        
+        // Sort by confidence (highest first)
+        objects.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        
+        let mut merged: Vec<DetectedObject> = Vec::new();
+        
+        for obj in objects {
+            let mut should_add = true;
+            
+            // Check if this object significantly overlaps with any existing object
+            for existing in &merged {
+                if self.bboxes_overlap(&obj.bbox, &existing.bbox, 0.5) {
+                    should_add = false;
+                    break;
+                }
+            }
+            
+            if should_add {
+                merged.push(obj);
+            }
+        }
+        
+        merged
+    }
+    
+    fn bboxes_overlap(&self, bbox1: &BoundingBox, bbox2: &BoundingBox, threshold: f32) -> bool {
+        let x1_min = bbox1.x;
+        let y1_min = bbox1.y;
+        let x1_max = bbox1.x + bbox1.width;
+        let y1_max = bbox1.y + bbox1.height;
+        
+        let x2_min = bbox2.x;
+        let y2_min = bbox2.y;
+        let x2_max = bbox2.x + bbox2.width;
+        let y2_max = bbox2.y + bbox2.height;
+        
+        let intersection_x = (x1_max.min(x2_max) - x1_min.max(x2_min)).max(0);
+        let intersection_y = (y1_max.min(y2_max) - y1_min.max(y2_min)).max(0);
+        let intersection_area = intersection_x * intersection_y;
+        
+        let area1 = bbox1.width * bbox1.height;
+        let area2 = bbox2.width * bbox2.height;
+        let union_area = area1 + area2 - intersection_area;
+        
+        if union_area == 0 {
+            return false;
+        }
+        
+        let overlap_ratio = intersection_area as f32 / union_area as f32;
+        overlap_ratio > threshold
+    }
+    
     fn generate_scene_description(&self, objects: &[DetectedObject], lidar_points: &[LidarPoint]) -> String {
         let mut description = String::new();
         
         if objects.is_empty() {
-            description.push_str("Basic scene analysis: No significant objects detected. ");
+            description.push_str("Clear environment with no significant objects detected.");
         } else {
-            description.push_str(&format!("Basic scene analysis found {} object(s): ", objects.len()));
+            // Group objects by type for cleaner summary
+            let mut object_counts = std::collections::HashMap::new();
+            let mut highest_confidence = 0.0;
+            let mut most_confident_object = "";
             
-            for (i, obj) in objects.iter().enumerate() {
-                if i > 0 {
+            for obj in objects {
+                *object_counts.entry(&obj.label).or_insert(0) += 1;
+                if obj.confidence > highest_confidence {
+                    highest_confidence = obj.confidence;
+                    most_confident_object = &obj.label;
+                }
+            }
+            
+            // Create concise summary
+            description.push_str("Environment contains: ");
+            let mut first = true;
+            for (label, count) in object_counts {
+                if !first {
                     description.push_str(", ");
                 }
-                description.push_str(&format!(
-                    "{} (confidence: {:.2}, position: {},{}, size: {}x{})",
-                    obj.label,
-                    obj.confidence,
-                    obj.bbox.x,
-                    obj.bbox.y,
-                    obj.bbox.width,
-                    obj.bbox.height
-                ));
+                if count == 1 {
+                    description.push_str(&label.replace("_", " "));
+                } else {
+                    description.push_str(&format!("{} {}s", count, label.replace("_", " ")));
+                }
+                first = false;
             }
-            description.push_str(". ");
+            
+            if !most_confident_object.is_empty() && highest_confidence > 0.7 {
+                description.push_str(&format!(". Most prominent: {} ({}% confidence)", 
+                                           most_confident_object.replace("_", " "),
+                                           (highest_confidence * 100.0) as u8));
+            }
+            description.push('.');
         }
         
-        // Add LiDAR information if available
+        // Add concise LiDAR information if available
         if !lidar_points.is_empty() {
             let close_objects = lidar_points.iter()
                 .filter(|p| p.distance < 2.0)
                 .count();
-            let far_objects = lidar_points.iter()
-                .filter(|p| p.distance >= 2.0 && p.distance < 5.0)
-                .count();
             
-            description.push_str(&format!(
-                "LiDAR shows {} close objects (<2m), {} mid-range objects (2-5m). ",
-                close_objects, far_objects
-            ));
-            
-            if let Some(closest) = lidar_points.iter().min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap()) {
-                description.push_str(&format!("Closest object at {:.1}m. ", closest.distance));
+            if close_objects > 0 {
+                if let Some(closest) = lidar_points.iter().min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap()) {
+                    description.push_str(&format!(" Nearest obstacle: {:.1}m away", closest.distance));
+                }
+            } else {
+                description.push_str(" Path appears clear (no close obstacles)");
             }
         }
         
