@@ -63,7 +63,8 @@ jobs:
           pkg-config \
           cmake \
           build-essential \
-          libasound2-dev
+          libasound2-dev \
+          libspeechd-dev
     
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -115,7 +116,8 @@ jobs:
           pkg-config \
           cmake \
           build-essential \
-          libasound2-dev
+          libasound2-dev \
+          libspeechd-dev
     
     - name: Install CUDA toolkit (for headers)
       run: |
@@ -182,7 +184,8 @@ jobs:
           pkg-config \
           cmake \
           build-essential \
-          libasound2-dev
+          libasound2-dev \
+          libspeechd-dev
     
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -274,7 +277,8 @@ jobs:
           pkg-config \
           cmake \
           build-essential \
-          libasound2-dev
+          libasound2-dev \
+          libspeechd-dev
     
     - name: Build documentation
       run: cargo doc --no-deps --no-default-features --features cpu
