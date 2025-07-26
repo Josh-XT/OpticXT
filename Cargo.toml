@@ -58,6 +58,7 @@ path = "src/main.rs"
 [features]
 default = ["cuda"]
 cuda = ["mistralrs/cuda"]
+cpu = []  # CPU-only mode (no CUDA dependencies)
 
 [profile.release]
 opt-level = 3

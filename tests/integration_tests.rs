@@ -1,4 +1,5 @@
 use opticxt::models::ModelConfig;
+use opticxt::tests::*;
 use anyhow::Result;
 
 #[tokio::test]
@@ -41,4 +42,52 @@ fn test_model_config_creation() {
     assert_eq!(config.context_length, 2048);
     
     println!("✅ ModelConfig creation and field access working correctly");
+}
+
+#[tokio::test]
+#[ignore] // Ignored by default - requires model files and GPU
+async fn test_quick_smoke_integration() -> Result<()> {
+    // Integration test for quick smoke test
+    // Run with: cargo test test_quick_smoke_integration -- --ignored
+    test_quick_smoke().await
+}
+
+#[tokio::test]
+#[ignore] // Ignored by default - requires model files and GPU
+async fn test_simple_inference_integration() -> Result<()> {
+    // Integration test for simple inference
+    // Run with: cargo test test_simple_inference_integration -- --ignored
+    test_simple_inference().await
+}
+
+#[tokio::test]
+#[ignore] // Ignored by default - requires model files and GPU
+async fn test_image_inference_integration() -> Result<()> {
+    // Integration test for image inference
+    // Run with: cargo test test_image_inference_integration -- --ignored
+    test_image_inference().await
+}
+
+#[tokio::test]
+#[ignore] // Ignored by default - requires model files and GPU
+async fn test_multimodal_inference_integration() -> Result<()> {
+    // Integration test for multimodal inference
+    // Run with: cargo test test_multimodal_inference_integration -- --ignored
+    test_multimodal_inference().await
+}
+
+#[tokio::test]
+#[ignore] // Ignored by default - requires model files and GPU
+async fn test_uqff_model_integration() -> Result<()> {
+    // Integration test for UQFF model
+    // Run with: cargo test test_uqff_model_integration -- --ignored
+    test_uqff_model().await
+}
+
+#[tokio::test]
+#[ignore] // Ignored by default - requires model files and GPU
+async fn test_tool_format_integration() -> Result<()> {
+    // Integration test for tool format
+    // Run with: cargo test test_tool_format_integration -- --ignored
+    test_tool_format().await
 }

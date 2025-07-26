@@ -2,6 +2,7 @@ use anyhow::Result;
 use crate::models::{GemmaModel, ModelConfig};
 use image::{DynamicImage, ImageBuffer, Rgb};
 
+/// Test simple text inference with the ISQ model
 pub async fn test_simple_inference() -> Result<()> {
     println!("🔬 Testing simple text inference...");
     
@@ -41,6 +42,7 @@ pub async fn test_simple_inference() -> Result<()> {
     Ok(())
 }
 
+/// Test image inference with vision capabilities
 pub async fn test_image_inference() -> Result<()> {
     println!("🔬 Testing image inference with vision capabilities...");
     
@@ -83,6 +85,7 @@ pub async fn test_image_inference() -> Result<()> {
     Ok(())
 }
 
+/// Test comprehensive multimodal inference capabilities
 pub async fn test_multimodal_inference() -> Result<()> {
     println!("🚀 Testing multimodal inference capabilities...");
     
@@ -139,6 +142,7 @@ pub async fn test_multimodal_inference() -> Result<()> {
     Ok(())
 }
 
+/// Test UQFF model inference
 pub async fn test_uqff_model() -> Result<()> {
     println!("🔬 Testing UQFF Gemma 3n model inference...");
     
@@ -191,6 +195,7 @@ pub async fn test_uqff_model() -> Result<()> {
     Ok(())
 }
 
+/// Test OpenAI-style tool calling format
 pub async fn test_tool_format() -> Result<()> {
     println!("🔧 Testing OpenAI-style tool calling format...");
     
@@ -254,6 +259,177 @@ pub async fn test_tool_format() -> Result<()> {
     Ok(())
 }
 
+/// Test basic model functionality (quick smoke test)
+pub async fn test_quick_smoke() -> Result<()> {
+    println!("🚀 Quick smoke test for basic functionality...");
+    
+    let config = ModelConfig {
+        max_tokens: 25,  // Very small for quick test
+        temperature: 0.1,
+        top_p: 0.8,
+        context_length: 256,
+    };
+    
+    println!("📥 Loading ISQ Gemma model...");
+    
+    // Load the ISQ model
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
+    println!("✅ Model loaded successfully!");
+    
+    // Single text test
+    println!("\n🔤 Quick text test");
+    let prompt = "Hello!";
+    println!("  📝 Prompt: \"{}\"", prompt);
+    
+    match model.generate(prompt).await {
+        Ok(result) => {
+            println!("  ✅ Response: {}", result.text);
+            println!("  📊 Tokens: {}, Time: {}ms", result.tokens_generated, result.processing_time_ms);
+        }
+        Err(e) => {
+            println!("  ❌ Generation failed: {}", e);
+            return Err(e);
+        }
+    }
+    
+    println!("\n🎉 Quick smoke test completed successfully!");
+    Ok(())
+}
+
+/// Test image-only inference capabilities
+pub async fn test_image_only() -> Result<()> {
+    println!("🚀 Testing image inference only...");
+    
+    let config = ModelConfig {
+        max_tokens: 50,  // Increased slightly for better responses
+        temperature: 0.1,
+        top_p: 0.8,
+        context_length: 1024,  // Increased for vision processing
+    };
+    
+    println!("📥 Loading ISQ Gemma model for image inference...");
+    
+    // Load the ISQ model fresh for image processing
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
+    println!("✅ Model loaded successfully!");
+    
+    // Create a simple test image
+    println!("\n👁️ Creating synthetic test image (64x64 with red square on blue background)...");
+    let test_image = create_simple_test_image();
+    
+    // Single image test
+    println!("🔤 Image + text test");
+    let prompt = "Describe this image briefly.";
+    println!("  📝 Prompt: \"{}\"", prompt);
+    
+    println!("  🔄 Starting image inference (this may take longer than text-only)...");
+    
+    match model.generate_with_image(prompt, test_image).await {
+        Ok(result) => {
+            println!("  ✅ Response: {}", result.text);
+            println!("  📊 Tokens: {}, Time: {}ms", result.tokens_generated, result.processing_time_ms);
+        }
+        Err(e) => {
+            println!("  ❌ Image generation failed: {}", e);
+            return Err(e);
+        }
+    }
+    
+    println!("\n🎉 Image inference test completed successfully!");
+    Ok(())
+}
+
+/// Test audio-only inference capabilities
+pub async fn test_audio_inference() -> Result<()> {
+    println!("🚀 Testing audio inference capabilities...");
+    
+    let config = ModelConfig {
+        max_tokens: 50,
+        temperature: 0.1,
+        top_p: 0.8,
+        context_length: 1024,
+    };
+    
+    println!("📥 Loading ISQ Gemma model for audio inference...");
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
+    println!("✅ Model loaded successfully!");
+    
+    // Create synthetic audio data
+    println!("\n🔊 Creating synthetic audio data (1 second 440Hz tone)...");
+    let test_audio = create_test_audio();
+    
+    let audio_prompts = vec![
+        "What do you hear in this audio?",
+        "Describe the audio content.",
+        "Is this audio indicating any action needed?",
+        "Analyze this audio input.",
+    ];
+    
+    for (i, prompt) in audio_prompts.iter().enumerate() {
+        println!("\n🧪 Audio Test {}: {}", i + 1, prompt);
+        
+        match model.generate_with_audio(prompt, test_audio.clone()).await {
+            Ok(result) => {
+                println!("✅ Generated audio response ({} tokens in {}ms):", 
+                         result.tokens_generated, result.processing_time_ms);
+                println!("Response: {}", result.text);
+            }
+            Err(e) => {
+                println!("❌ Audio generation failed: {}", e);
+                return Err(e);
+            }
+        }
+    }
+    
+    println!("\n✨ Audio inference test completed successfully!");
+    Ok(())
+}
+
+/// Test text generation focused on robot commands
+pub async fn test_robot_commands() -> Result<()> {
+    println!("🚀 Testing robot command generation...");
+    
+    let config = ModelConfig {
+        max_tokens: 100,
+        temperature: 0.2,  // Lower temperature for more consistent commands
+        top_p: 0.9,
+        context_length: 2048,
+    };
+    
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
+    
+    let robot_scenarios = vec![
+        ("Navigation", "I need to move to the kitchen."),
+        ("Obstacle detection", "There's something blocking my path."),
+        ("Task completion", "I've finished cleaning the floor."),
+        ("Safety check", "Is it safe to proceed forward?"),
+        ("Status update", "Report current battery level and location."),
+        ("Emergency stop", "Emergency! Stop all movement immediately."),
+    ];
+    
+    println!("🤖 Testing {} robot command scenarios...\n", robot_scenarios.len());
+    
+    for (i, (scenario, prompt)) in robot_scenarios.iter().enumerate() {
+        println!("🧪 Test {}: {} - \"{}\"", i + 1, scenario, prompt);
+        
+        match model.generate(prompt).await {
+            Ok(result) => {
+                println!("✅ Robot response ({} tokens in {}ms):", 
+                         result.tokens_generated, result.processing_time_ms);
+                println!("🤖 Command: {}", result.text);
+            }
+            Err(e) => {
+                println!("❌ Robot command generation failed: {}", e);
+                return Err(e);
+            }
+        }
+        println!();
+    }
+    
+    println!("🎉 Robot command test completed successfully!");
+    Ok(())
+}
+
 // Helper function to create a simple test image
 fn create_test_image() -> DynamicImage {
     let width = 32;
@@ -283,6 +459,25 @@ fn create_colored_test_image() -> DynamicImage {
     }
     
     DynamicImage::ImageRgb8(image)
+}
+
+// Helper function to create a simple test image with shapes
+fn create_simple_test_image() -> DynamicImage {
+    // Create a 64x64 image with a red square on blue background
+    let mut img = ImageBuffer::new(64, 64);
+    
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let color = if x >= 16 && x < 48 && y >= 16 && y < 48 {
+            // Red square in center
+            Rgb([255, 0, 0])
+        } else {
+            // Blue background
+            Rgb([0, 0, 255])
+        };
+        *pixel = color;
+    }
+    
+    DynamicImage::ImageRgb8(img)
 }
 
 // Helper function to create synthetic audio data

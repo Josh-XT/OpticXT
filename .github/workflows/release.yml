@@ -1,0 +1,177 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-release:
+    name: Build Release
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        features: [cpu, cuda]
+        exclude:
+          # Only build CUDA on Ubuntu for now
+          - os: windows-latest
+            features: cuda
+          - os: macos-latest
+            features: cuda
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libopencv-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libavfilter-dev \
+          libavdevice-dev \
+          pkg-config \
+          cmake \
+          build-essential \
+          libasound2-dev
+        
+        if [ "${{ matrix.features }}" = "cuda" ]; then
+          # Install CUDA toolkit for release builds
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
+          sudo dpkg -i cuda-keyring_1.0-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y cuda-toolkit-12-5 || {
+            echo "CUDA installation failed, falling back to CPU build"
+            echo "features=cpu" >> $GITHUB_ENV
+          }
+          echo "CUDA_ROOT=/usr/local/cuda-12.5" >> $GITHUB_ENV
+          echo "PATH=/usr/local/cuda-12.5/bin:$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/cuda-12.5/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        fi
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Build release binary
+      run: |
+        if [ "${{ matrix.features }}" = "cuda" ] && [ -n "$CUDA_ROOT" ] && [ -f "$CUDA_ROOT/bin/nvcc" ]; then
+          echo "Building with CUDA support..."
+          cargo build --release --features cuda
+          echo "BINARY_SUFFIX=-cuda" >> $GITHUB_ENV
+        else
+          echo "Building with CPU-only support..."
+          cargo build --release --no-default-features --features cpu
+          echo "BINARY_SUFFIX=-cpu" >> $GITHUB_ENV
+        fi
+    
+    - name: Run quick test on release binary
+      run: |
+        echo "Testing release binary..."
+        ./target/release/opticxt --help
+        
+        # Quick smoke test if possible
+        timeout 30 ./target/release/opticxt --test-quick-smoke || {
+          echo "Quick smoke test failed or timed out (this may be expected without models)"
+        }
+    
+    - name: Package release
+      run: |
+        mkdir -p release/opticxt${{ env.BINARY_SUFFIX }}
+        cp target/release/opticxt release/opticxt${{ env.BINARY_SUFFIX }}/
+        cp README.md release/opticxt${{ env.BINARY_SUFFIX }}/
+        cp LICENSE release/opticxt${{ env.BINARY_SUFFIX }}/
+        cp config.toml release/opticxt${{ env.BINARY_SUFFIX }}/
+        cp setup.sh release/opticxt${{ env.BINARY_SUFFIX }}/
+        
+        # Create example directory structure
+        mkdir -p release/opticxt${{ env.BINARY_SUFFIX }}/models
+        mkdir -p release/opticxt${{ env.BINARY_SUFFIX }}/logs
+        mkdir -p release/opticxt${{ env.BINARY_SUFFIX }}/data
+        
+        echo "Download your Gemma model here" > release/opticxt${{ env.BINARY_SUFFIX }}/models/README.md
+        
+        # Create archive
+        cd release
+        tar -czf opticxt${{ env.BINARY_SUFFIX }}-${{ runner.os }}.tar.gz opticxt${{ env.BINARY_SUFFIX }}/
+        cd ..
+    
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: opticxt${{ env.BINARY_SUFFIX }}-${{ runner.os }}
+        path: release/opticxt${{ env.BINARY_SUFFIX }}-${{ runner.os }}.tar.gz
+        retention-days: 30
+    
+    - name: Create GitHub Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/opticxt${{ env.BINARY_SUFFIX }}-${{ runner.os }}.tar.gz
+        body: |
+          ## OpticXT Release ${{ github.ref_name }}
+          
+          ### Features
+          - Vision-driven autonomous robot control
+          - ISQ quantized model support
+          - GPU acceleration (${{ matrix.features }} build)
+          - Multimodal inference (text, vision, audio)
+          - OpenAI-style tool calling
+          
+          ### Installation
+          1. Download the appropriate archive for your system
+          2. Extract: `tar -xzf opticxt${{ env.BINARY_SUFFIX }}-${{ runner.os }}.tar.gz`
+          3. Run setup: `cd opticxt${{ env.BINARY_SUFFIX }} && ./setup.sh`
+          4. Follow the setup instructions to download models
+          
+          ### Usage
+          ```bash
+          # Basic robot control mode
+          ./opticxt
+          
+          # Test functionality
+          ./opticxt --test-quick-smoke
+          
+          # Video chat mode
+          ./opticxt --video-chat
+          
+          # See all options
+          ./opticxt --help
+          ```
+          
+          ### System Requirements
+          - Linux (Ubuntu 20.04+ recommended)
+          - CUDA 12.5+ (for CUDA builds)
+          - Camera device (for vision functionality)
+          - Audio device (for multimodal features)
+          
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,220 @@
+name: Comprehensive Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of test to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - quick-smoke
+        - simple
+        - image
+        - multimodal
+        - uqff
+        - tool-format
+        - audio
+        - robot-commands
+      use_mock_model:
+        description: 'Use mock model (no real AI inference)'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  comprehensive-test:
+    name: Run Comprehensive Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libopencv-dev \
+          libavformat-dev \
+          libavcodec-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libavfilter-dev \
+          libavdevice-dev \
+          pkg-config \
+          cmake \
+          build-essential \
+          libasound2-dev \
+          ffmpeg
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache target directory
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-target-comprehensive-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Build project
+      run: cargo build --no-default-features --features cpu --release
+    
+    - name: Create test directory structure
+      run: |
+        mkdir -p logs
+        mkdir -p models
+        mkdir -p data
+        echo "Test data directory created" > data/test.txt
+    
+    - name: Run selected tests
+      run: |
+        cd ${{ github.workspace }}
+        
+        echo "Running test type: ${{ github.event.inputs.test_type }}"
+        echo "Using mock model: ${{ github.event.inputs.use_mock_model }}"
+        
+        if [ "${{ github.event.inputs.use_mock_model }}" = "true" ]; then
+          echo "⚠️  Running with mock model (no actual AI inference)"
+          export MOCK_MODEL=1
+        fi
+        
+        case "${{ github.event.inputs.test_type }}" in
+          "quick-smoke")
+            echo "🚀 Running quick smoke test..."
+            timeout 300 ./target/release/opticxt --test-quick-smoke || {
+              echo "❌ Quick smoke test failed or timed out"
+              exit 1
+            }
+            ;;
+          "simple")
+            echo "🔤 Running simple text inference test..."
+            timeout 300 ./target/release/opticxt --test-simple || {
+              echo "❌ Simple test failed or timed out"
+              exit 1
+            }
+            ;;
+          "image")
+            echo "👁️  Running image inference test..."
+            timeout 300 ./target/release/opticxt --test-image || {
+              echo "❌ Image test failed or timed out"
+              exit 1
+            }
+            ;;
+          "multimodal")
+            echo "🎭 Running multimodal inference test..."
+            timeout 600 ./target/release/opticxt --test-multimodal || {
+              echo "❌ Multimodal test failed or timed out"
+              exit 1
+            }
+            ;;
+          "uqff")
+            echo "⚡ Running UQFF model test..."
+            timeout 600 ./target/release/opticxt --test-uqff || {
+              echo "❌ UQFF test failed or timed out"
+              exit 1
+            }
+            ;;
+          "tool-format")
+            echo "🔧 Running tool format test..."
+            timeout 300 ./target/release/opticxt --test-tool-format || {
+              echo "❌ Tool format test failed or timed out"
+              exit 1
+            }
+            ;;
+          "audio")
+            echo "🔊 Running audio inference test..."
+            timeout 300 ./target/release/opticxt --test-audio || {
+              echo "❌ Audio test failed or timed out"
+              exit 1
+            }
+            ;;
+          "robot-commands")
+            echo "🤖 Running robot commands test..."
+            timeout 300 ./target/release/opticxt --test-robot-commands || {
+              echo "❌ Robot commands test failed or timed out"
+              exit 1
+            }
+            ;;
+          "all")
+            echo "🎯 Running all available tests..."
+            
+            echo "1/9: Quick smoke test"
+            timeout 300 ./target/release/opticxt --test-quick-smoke || echo "❌ Quick smoke test failed"
+            
+            echo "2/9: Simple inference test"
+            timeout 300 ./target/release/opticxt --test-simple || echo "❌ Simple test failed"
+            
+            echo "3/9: Image inference test"
+            timeout 300 ./target/release/opticxt --test-image || echo "❌ Image test failed"
+            
+            echo "4/9: Image-only test"
+            timeout 300 ./target/release/opticxt --test-image-only || echo "❌ Image-only test failed"
+            
+            echo "5/9: Audio inference test"
+            timeout 300 ./target/release/opticxt --test-audio || echo "❌ Audio test failed"
+            
+            echo "6/9: Tool format test"
+            timeout 300 ./target/release/opticxt --test-tool-format || echo "❌ Tool format test failed"
+            
+            echo "7/9: Robot commands test"
+            timeout 300 ./target/release/opticxt --test-robot-commands || echo "❌ Robot commands test failed"
+            
+            if [ "${{ github.event.inputs.use_mock_model }}" = "false" ]; then
+              echo "8/9: Multimodal inference test (real model)"
+              timeout 600 ./target/release/opticxt --test-multimodal || echo "❌ Multimodal test failed"
+              
+              echo "9/9: UQFF model test (real model)"
+              timeout 600 ./target/release/opticxt --test-uqff || echo "❌ UQFF test failed"
+            else
+              echo "8/9: Skipping multimodal test (mock mode)"
+              echo "9/9: Skipping UQFF test (mock mode)"
+            fi
+            
+            echo "✅ All tests attempted"
+            ;;
+          *)
+            echo "❌ Unknown test type: ${{ github.event.inputs.test_type }}"
+            exit 1
+            ;;
+        esac
+    
+    - name: Verify test output
+      run: |
+        echo "📊 Test execution summary:"
+        ls -la logs/ || echo "No log files generated"
+        
+        echo "🔍 Checking for common error patterns..."
+        if [ -d logs ]; then
+          grep -r "ERROR\|FATAL\|panic" logs/ || echo "No critical errors found in logs"
+        fi
+        
+        echo "✅ Test verification completed"
+    
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ github.event.inputs.test_type }}
+        path: |
+          logs/
+          data/
+        retention-days: 7

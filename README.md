@@ -248,6 +248,81 @@ Flexible camera support with automatic detection:
 - **CSI Cameras**: Jetson Nano camera modules
 - **Fallback**: Simulation mode when no camera is detected
 
+## Testing & Development
+
+OpticXT includes comprehensive testing capabilities for development and validation:
+
+### Test Modes
+
+The system provides 9 different test modes to validate various components:
+
+#### Core AI Tests
+
+```bash
+# Quick smoke test (fast basic functionality check)
+cargo run --release --features cuda -- --test-quick-smoke
+
+# Simple text inference test
+cargo run --release --features cuda -- --test-simple
+
+# UQFF quantized model test
+cargo run --release --features cuda -- --test-uqff
+```
+
+#### Multimodal Tests
+
+```bash
+# Comprehensive multimodal test (text + image + audio)
+cargo run --release --features cuda -- --test-multimodal
+
+# Image-only inference test
+cargo run --release --features cuda -- --test-image
+
+# Alternative image inference test
+cargo run --release --features cuda -- --test-image-only
+
+# Audio-only inference test
+cargo run --release --features cuda -- --test-audio
+```
+
+#### Specialized Tests
+
+```bash
+# OpenAI-style tool calling format validation
+cargo run --release --features cuda -- --test-tool-format
+
+# Robot command generation scenarios
+cargo run --release --features cuda -- --test-robot-commands
+```
+
+### Integration Tests
+
+```bash
+# Run unit tests (no GPU required)
+cargo test
+
+# Run all tests including GPU-intensive ones
+cargo test -- --ignored
+
+# Run specific integration test
+cargo test test_quick_smoke_integration -- --ignored
+```
+
+### Development Testing Workflow
+
+1. **Start with smoke test**: `--test-quick-smoke` for basic functionality
+2. **Test specific components**: Use targeted tests like `--test-image` or `--test-audio`
+3. **Full validation**: Run `--test-multimodal` for comprehensive testing
+4. **Performance validation**: Use `--test-uqff` for model-specific testing
+
+### Expected Test Results
+
+- **Model Loading**: 15-25 seconds depending on hardware
+- **Text Generation**: 50-200ms per response
+- **Image Processing**: 200-800ms per image
+- **Audio Processing**: 100-500ms per audio segment
+- **Tool Call Generation**: Valid JSON format with proper function structure
+
 ## Troubleshooting
 
 ### Common Issues

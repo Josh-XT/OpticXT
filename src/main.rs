@@ -75,6 +75,22 @@ struct Args {
     /// Test OpenAI-style tool calling format
     #[arg(long)]
     test_tool_format: bool,
+    
+    /// Test quick smoke test (fast basic functionality check)
+    #[arg(long)]
+    test_quick_smoke: bool,
+    
+    /// Test image-only inference capabilities
+    #[arg(long)]
+    test_image_only: bool,
+    
+    /// Test audio-only inference capabilities
+    #[arg(long)]
+    test_audio: bool,
+    
+    /// Test robot command generation scenarios
+    #[arg(long)]
+    test_robot_commands: bool,
 }
 
 #[tokio::main]
@@ -132,6 +148,34 @@ async fn main() -> Result<()> {
     if args.test_tool_format {
         info!("Starting tool format test");
         tests::test_tool_format().await?;
+        return Ok(());
+    }
+    
+    // Check if quick smoke test mode is requested
+    if args.test_quick_smoke {
+        info!("Starting quick smoke test");
+        tests::test_quick_smoke().await?;
+        return Ok(());
+    }
+    
+    // Check if image-only test mode is requested
+    if args.test_image_only {
+        info!("Starting image-only inference test");
+        tests::test_image_only().await?;
+        return Ok(());
+    }
+    
+    // Check if audio test mode is requested
+    if args.test_audio {
+        info!("Starting audio inference test");
+        tests::test_audio_inference().await?;
+        return Ok(());
+    }
+    
+    // Check if robot commands test mode is requested
+    if args.test_robot_commands {
+        info!("Starting robot commands test");
+        tests::test_robot_commands().await?;
         return Ok(());
     }
     
