@@ -8,6 +8,7 @@ height = 480
 fps = 30
 confidence_threshold = 0.5
 vision_model = "yolo"  # Options: yolo, coco, custom
+enable_multimodal_inference = true  # Send actual camera images to vision model
 
 [model]
 # Gemma model configuration

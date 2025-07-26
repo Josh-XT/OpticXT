@@ -1,5 +1,6 @@
 use anyhow::Result;
 use crate::models::{GemmaModel, ModelConfig};
+use crate::test_camera_vision::{test_real_camera_vision_description, test_vision_consistency_with_main, test_vision_integration_quick};
 use image::{DynamicImage, ImageBuffer, Rgb};
 
 /// Test simple text inference with the ISQ model
@@ -502,4 +503,20 @@ fn create_test_audio() -> Vec<u8> {
     }
     
     audio_data
+}
+
+/// Test that confirms real camera input is used for vision description
+/// This validates that the system properly uses camera input and matches main branch behavior
+pub async fn test_camera_vision_description() -> Result<()> {
+    test_real_camera_vision_description().await
+}
+
+/// Test vision consistency with main branch behavior
+pub async fn test_vision_main_consistency() -> Result<()> {
+    test_vision_consistency_with_main().await
+}
+
+/// Quick test to verify camera vision integration works
+pub async fn test_camera_integration_quick() -> Result<()> {
+    test_vision_integration_quick().await
 }

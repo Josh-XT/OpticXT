@@ -171,12 +171,15 @@ impl VisionActionPipeline {
     async fn process_single_frame(&mut self) -> Result<()> {
         // Step 1: Capture frame and sensor data from camera system
         let sensor_data = self.camera_system.capture_sensor_data().await?;
+        debug!("📷 Captured camera frame: {}x{}", sensor_data.frame.width, sensor_data.frame.height);
         
         // Step 2: Process frame for object detection and context
         let frame_context = self.vision_processor.process_frame(&sensor_data.frame, &sensor_data).await?;
         
-        debug!("Frame processed: {} | LiDAR points: {}", 
-               frame_context.scene_description, sensor_data.lidar_points.len());
+        debug!("👁️ Vision processed: {} objects detected | Scene: {}", 
+               frame_context.objects.len(), 
+               frame_context.scene_description.chars().take(100).collect::<String>());
+        debug!("🎯 LiDAR data: {} points", sensor_data.lidar_points.len());
         
         // Step 3: Build mandatory context
         let mandatory_context = {
@@ -192,8 +195,30 @@ impl VisionActionPipeline {
         
         debug!("Generated prompt with {} characters", prompt.len());
         
-        // Step 5: Run model inference
-        let generation_result = self.model.generate(&prompt).await?;
+        // Step 5: Run model inference with vision
+        let generation_result = if self.config.vision.enable_multimodal_inference {
+            // Convert camera frame to image for vision model
+            match sensor_data.frame.to_image() {
+                Ok(camera_image) => {
+                    debug!("Sending camera image to vision model for multimodal inference");
+                    match self.model.generate_with_image(&prompt, camera_image).await {
+                        Ok(result) => result,
+                        Err(e) => {
+                            warn!("Vision model inference failed, falling back to text-only: {}", e);
+                            self.model.generate(&prompt).await?
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to convert camera frame to image, using text-only inference: {}", e);
+                    self.model.generate(&prompt).await?
+                }
+            }
+        } else {
+            // Text-only inference (current behavior)
+            debug!("Using text-only inference (multimodal disabled in config)");
+            self.model.generate(&prompt).await?
+        };
         
         debug!(
             "Model generated {} tokens in {}ms: {}",

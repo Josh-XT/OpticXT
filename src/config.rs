@@ -25,6 +25,8 @@ pub struct VisionConfig {
     pub confidence_threshold: f32,
     /// Vision model for labeling (can be local or API-based)
     pub vision_model: String,
+    /// Enable multimodal inference (send actual camera images to model)
+    pub enable_multimodal_inference: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,6 +100,7 @@ impl Default for OpticXTConfig {
                 fps: 30,
                 confidence_threshold: 0.5,
                 vision_model: "yolo".to_string(),
+                enable_multimodal_inference: true, // Enable by default for vision models
             },
             model: ModelConfig {
                 model_path: "".to_string(), // Use default model

@@ -1,20 +1,25 @@
 # OpticXT
 
-Vision-Driven Autonomous Robot Control System
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange)](https://www.rust-lang.org/)
+[![CUDA](https://img.shields.io/badge/CUDA-Enabled-green)](https://developer.nvidia.com/cuda-zone)
+[![GitHub Stars](https://img.shields.io/github/stars/Josh-XT/OpticXT)](https://github.com/Josh-XT/OpticXT/stargazers)
+
+*Vision-Driven Autonomous Robot Control System*
 
 ## Overview
 
-OpticXT is a high-performance, real-time robot control system that combines computer vision, audio processing, and multimodal AI decision-making. The system is optimized for edge deployment on NVIDIA hardware with CUDA acceleration, delivering fast inference through ISQ (In-Situ Quantization) and GPU-accelerated processing.
-
-**Key Achievement**: Full GPU acceleration with ISQ quantization achieving optimal performance on NVIDIA RTX 4090 and compatible hardware.
-
-The system operates as an autonomous robot control platform with:
-- **Real-time Vision Processing**: Optimized object detection and scene understanding
-- **GPU-Accelerated AI**: ISQ quantization with CUDA acceleration for fast inference
-- **Multimodal Capabilities**: Text, image, and audio processing with `unsloth/gemma-3n-E4B-it` model
-- **OpenAI Tool Calling**: Modern function call interface for precise robot control
+OpticXT is a high-performance, real-time robot control system combining computer vision, audio processing, and multimodal AI. Powered by GPU-accelerated ISQ quantization on NVIDIA hardware for edge deployment.
 
 OpticXT transforms visual and audio input into contextual understanding and immediate robotic actions through GPU-accelerated inference.
+
+### Demo
+
+<p align="center">
+  <img src="https://via.placeholder.com/800x400/2B2B2B/00D4AA?text=OpticXT+CUDA+Demo+%E2%80%A2+RTX+4090" alt="OpticXT running with CUDA acceleration" width="600">
+</p>
+
+*Real-time inference on RTX 4090: Model loading in 22s, 36% GPU utilization during continuous processing.*
 
 ## Key Features
 
@@ -23,7 +28,7 @@ OpticXT transforms visual and audio input into contextual understanding and imme
 - **ISQ Quantization**: In-Situ Quantization with Q4K precision for optimal speed/quality balance
 - **CUDA Acceleration**: Full GPU acceleration on NVIDIA RTX 4090 and compatible hardware
 - **Fast Model Loading**: 22-second model loading with optimized memory footprint
-- **Multimodal Support**: Text, image, and audio processing with `unsloth/gemma-3n-E4B-it` vision model
+- **Multimodal Support**: Text, image, and audio processing with [`unsloth/gemma-3n-E4B-it`](https://huggingface.co/unsloth/gemma-3n-E4B-it) vision model
 - **Real-time Inference**: 36-38% GPU utilization with 6.8GB VRAM usage for continuous processing
 
 ### 🎯 Real-Time Vision & Audio Processing
@@ -128,17 +133,43 @@ git clone https://github.com/Josh-XT/OpticXT.git
 cd OpticXT
 ```
 
-2. **Build with CUDA support for GPU acceleration**
+2. **Setup CUDA Environment (Required for GPU acceleration)**
 
-```bash
-# For NVIDIA GPU acceleration (recommended)
-cargo build --release --features cuda
+For PowerShell (Windows/WSL):
 
-# For CPU-only mode (fallback)
-cargo build --release
+```powershell
+# Set CUDA environment variables
+$env:CUDA_ROOT = "/usr/local/cuda-12.5"
+$env:PATH = "$env:CUDA_ROOT/bin:$env:PATH"
+$env:LD_LIBRARY_PATH = "$env:CUDA_ROOT/lib64:$env:LD_LIBRARY_PATH"
+
+# Or run the setup script
+./setup_cuda.ps1
 ```
 
-3. **The system uses ISQ quantization with automatic model download**
+For Bash/Zsh (Linux/macOS):
+
+```bash
+# Set CUDA environment variables
+export CUDA_ROOT="/usr/local/cuda-12.5"
+export PATH="$CUDA_ROOT/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_ROOT/lib64:$LD_LIBRARY_PATH"
+
+# Or run the setup script
+source ./setup_cuda.sh
+```
+
+3. **Build with CUDA support for GPU acceleration**
+
+```bash
+# For NVIDIA GPU acceleration (recommended) - with CUDA environment
+cargo build --release
+
+# For CPU-only mode (fallback) - no CUDA dependencies
+cargo build --release --no-default-features
+```
+
+4. **The system uses ISQ quantization with automatic model download**
 
 The system automatically downloads and quantizes the `unsloth/gemma-3n-E4B-it` model:
 
@@ -211,6 +242,33 @@ OPTIONS:
 - **Inference Speed**: 36-38% GPU utilization during processing
 - **Object Detection**: Max 10 high-confidence objects per frame
 - **Response Time**: 3-6 seconds per inference cycle
+
+## Usage
+
+After installation, run the system:
+
+```bash
+# Start in video chat mode (default)
+cargo run --release --features cuda
+
+# Run with custom config
+cargo run --release --features cuda -- --config custom.toml --camera-device 1
+```
+
+For robot control mode, edit `config.toml` to enable hardware integration:
+
+```bash
+# Test robot commands
+cargo run --release -- --test-robot-commands
+
+# Monitor GPU performance (in separate terminal)
+watch -n 1 nvidia-smi
+```
+
+**Quick Test**: Verify your setup with the vision flow test:
+```bash
+cargo run --bin test_vision_flow --features cuda
+```
 
 ## Hardware Requirements & Compatibility
 
@@ -295,6 +353,16 @@ cargo run --release --features cuda -- --test-tool-format
 cargo run --release --features cuda -- --test-robot-commands
 ```
 
+#### Camera Vision Tests
+
+```bash
+# Test real camera input for vision description (confirms camera usage)
+cargo run --release --features cuda -- --test-camera-vision
+
+# Test vision consistency with main branch behavior  
+cargo run --release --features cuda -- --test-vision-main-consistency
+```
+
 ### Integration Tests
 
 ```bash
@@ -311,9 +379,11 @@ cargo test test_quick_smoke_integration -- --ignored
 ### Development Testing Workflow
 
 1. **Start with smoke test**: `--test-quick-smoke` for basic functionality
-2. **Test specific components**: Use targeted tests like `--test-image` or `--test-audio`
-3. **Full validation**: Run `--test-multimodal` for comprehensive testing
-4. **Performance validation**: Use `--test-uqff` for model-specific testing
+2. **Test camera vision**: `--test-camera-vision` to confirm camera input usage
+3. **Test specific components**: Use targeted tests like `--test-image` or `--test-audio`
+4. **Full validation**: Run `--test-multimodal` for comprehensive testing
+5. **Consistency check**: `--test-vision-main-consistency` to verify main branch behavior
+6. **Performance validation**: Use `--test-uqff` for model-specific testing
 
 ### Expected Test Results
 
@@ -325,33 +395,45 @@ cargo test test_quick_smoke_integration -- --ignored
 
 ## Troubleshooting
 
-### Common Issues
+### CUDA Issues
+- **CUDA Not Detected**: 
+  - Verify drivers: `nvidia-smi`
+  - Rebuild: `cargo clean && cargo build --release --features cuda`
+- Ensure NVIDIA drivers are installed and up to date
+- Verify CUDA toolkit installation (see `CUDA_BUILD_GUIDE.md`)
+- Check that your GPU supports the CUDA version
+- Try running without CUDA features first: `cargo run --release`
 
-#### No Camera Detected
+### Model Loading Issues
+- Verify internet connection for model downloads
+- Check available disk space (models can be several GB)
+- Ensure sufficient system memory (8GB+ recommended)
+- Clear model cache if corruption suspected: `rm -rf ~/.cache/huggingface`
 
-```bash
-# Check available cameras
-ls /dev/video*
-v4l2-ctl --list-devices
-
-# Fix permissions
-sudo usermod -a -G video $USER
-# Log out and back in
-```
-
-#### Audio Issues
-
-```bash
-# Check audio devices
-aplay -l    # List playback devices
-arecord -l  # List capture devices
-
-# Test microphone
-arecord -d 5 test.wav && aplay test.wav
-
-# Fix audio permissions
-sudo usermod -a -G audio $USER
-```
+### Camera/Audio Issues
+- **No Camera Detected**:
+  ```bash
+  # Check available cameras
+  ls /dev/video*
+  v4l2-ctl --list-devices
+  
+  # Fix permissions
+  sudo usermod -a -G video $USER
+  # Log out and back in
+  ```
+- **Audio Issues**:
+  ```bash
+  # Check audio devices
+  aplay -l    # List playback devices
+  arecord -l  # List capture devices
+  
+  # Test microphone
+  arecord -d 5 test.wav && aplay test.wav
+  
+  # Fix audio permissions
+  sudo usermod -a -G audio $USER
+  ```
+- For multiple cameras, try different device indices (0, 1, 2...)
 
 #### Model Loading (Real AI Inference - Current Status)
 
@@ -510,6 +592,15 @@ OpticXT generates OpenAI-style function calls for precise robot control:
 }]
 ```
 
+## Roadmap
+
+- **Integrate Enhanced Model Support**: Add Llama variants and other state-of-the-art models
+- **Add ROS2 Integration**: Advanced robotics framework support for complex robot control
+- **Enhance Real-time Audio**: Improved speech recognition and audio processing capabilities
+- **Create Web Interface**: Browser-based control panel for remote operation
+- **Add Docker Support**: Containerized deployment for easier setup and scaling
+- **Enable Multi-Robot Coordination**: Support for controlling multiple robots simultaneously
+
 ## Deployment Guide
 
 ### Desktop/Laptop Development
@@ -559,14 +650,25 @@ We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.
 - Pull request process
 - Development setup
 
+---
+
+**⭐ Found OpticXT useful?** Star this repository to show your support!  
+**❓ Have questions?** [Open an issue](https://github.com/Josh-XT/OpticXT/issues) - we're here to help!
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support the Project
+
+If OpticXT has helped you, consider supporting development:
+
+- ⭐ **Star the repo** to show your support!
+- 💬 **Join discussions** or report issues on GitHub
+- ☕ **Support development**: CA: `Ga9P2TZcxsHjYmXdEyu9Z7wL1QAowjBAZwRQ41gBbonk`
 
 ---
 
 ## OpticXT: GPU-Accelerated Vision Robot Control
 
-*Real-time robot control with ISQ quantization and CUDA acceleration - from autonomous navigation to precise manipulation.*
-
-CA: Ga9P2TZcxsHjYmXdEyu9Z7wL1QAowjBAZwRQ41gBbonk
+**Real-time robot control with ISQ quantization and CUDA acceleration - from autonomous navigation to precise manipulation.**

@@ -12,6 +12,7 @@ mod config;
 mod camera;
 mod audio;
 mod tests;
+mod test_camera_vision;
 // mod video_chat;  // Disabled due to winit compatibility issues
 
 use vision_basic as vision;
@@ -91,6 +92,14 @@ struct Args {
     /// Test robot command generation scenarios
     #[arg(long)]
     test_robot_commands: bool,
+    
+    /// Test real camera vision description (confirms camera input usage)
+    #[arg(long)]
+    test_camera_vision: bool,
+    
+    /// Test vision consistency with main branch behavior
+    #[arg(long)]
+    test_vision_main_consistency: bool,
 }
 
 #[tokio::main]
@@ -176,6 +185,20 @@ async fn main() -> Result<()> {
     if args.test_robot_commands {
         info!("Starting robot commands test");
         tests::test_robot_commands().await?;
+        return Ok(());
+    }
+    
+    // Check if camera vision test mode is requested
+    if args.test_camera_vision {
+        info!("Starting real camera vision description test");
+        tests::test_camera_vision_description().await?;
+        return Ok(());
+    }
+    
+    // Check if vision main consistency test mode is requested
+    if args.test_vision_main_consistency {
+        info!("Starting vision consistency test with main branch");
+        tests::test_vision_main_consistency().await?;
         return Ok(());
     }
     
