@@ -3,6 +3,7 @@
 Cargo.lock
 **/*.rs.bk
 *.pdb
+output.md
 
 # Models and data
 /models/

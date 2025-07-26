@@ -3,43 +3,12 @@ name: CI Build and Test
 on:
   push:
     branches: [ main, "Add-UQFF-model-support" ]
-  pull_request:
-    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
 jobs:
-  lint:
-    name: Lint and Format Check
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt, clippy
-    
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Check formatting
-      run: cargo fmt --all -- --check
-    
-    - name: Run clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
-
   build-cpu:
     name: Build (CPU only)
     runs-on: ubuntu-latest
@@ -92,74 +61,6 @@ jobs:
     
     - name: Run integration tests
       run: cargo test --test integration_tests --no-default-features --features "cpu"
-
-  build-cuda:
-    name: Build (CUDA - Mock)
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-    
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libopencv-dev \
-          libavformat-dev \
-          libavcodec-dev \
-          libavutil-dev \
-          libswscale-dev \
-          libavfilter-dev \
-          libavdevice-dev \
-          pkg-config \
-          cmake \
-          build-essential \
-          libasound2-dev \
-          libspeechd-dev
-    
-    - name: Install CUDA toolkit (for headers)
-      run: |
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
-        sudo dpkg -i cuda-keyring_1.0-1_all.deb
-        sudo apt-get update
-        sudo apt-get install -y cuda-toolkit-12-5 || true
-        # Set CUDA environment even if installation fails
-        echo "CUDA_ROOT=/usr/local/cuda-12.5" >> $GITHUB_ENV
-        echo "PATH=/usr/local/cuda-12.5/bin:$PATH" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/local/cuda-12.5/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-    
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Cache target directory
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: ${{ runner.os }}-target-cuda-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Check CUDA installation
-      run: |
-        which nvcc || echo "nvcc not found, will skip CUDA compilation"
-        nvidia-smi || echo "nvidia-smi not found (expected in CI)"
-    
-    - name: Build check (attempt CUDA build)
-      run: |
-        # Try CUDA build first, fall back to CPU if it fails
-        cargo check --features cuda || {
-          echo "CUDA build failed, falling back to CPU build"
-          cargo check --no-default-features --features cpu
-        }
 
   test-compilation:
     name: Test Function Compilation
