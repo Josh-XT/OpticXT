@@ -118,13 +118,14 @@ jobs:
       run: |
         cargo build --no-default-features --features cpu --quiet
         echo "Checking that test CLI options have been removed..."
-        test_options=$(./target/debug/opticxt --help | grep -c "test-" || echo "0")
-        if [ "$test_options" -eq 0 ]; then
-          echo "✅ Test CLI options properly removed (found $test_options)"
-          echo "✅ Tests are now run via 'cargo test' command"
-        else
+        if ./target/debug/opticxt --help | grep -q "test-"; then
+          test_options=$(./target/debug/opticxt --help | grep -c "test-")
           echo "⚠️  Found $test_options test CLI options - they should be removed"
           ./target/debug/opticxt --help | grep "test-"
+          exit 1
+        else
+          echo "✅ Test CLI options properly removed (found 0)"
+          echo "✅ Tests are now run via 'cargo test' command"
         fi
 
   security-audit:
