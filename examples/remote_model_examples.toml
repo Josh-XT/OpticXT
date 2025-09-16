@@ -1,0 +1,74 @@
+# OpticXT Remote Model Configuration Examples
+# Copy and modify these examples in your config.toml
+
+# Example 1: OpenAI GPT-4o with Vision (High quality, supports images)
+# [model.remote]
+# base_url = "https://api.openai.com/v1"
+# api_key = "your-openai-api-key-here"
+# model_name = "gpt-4o"
+# temperature = 0.7
+# top_p = 0.9
+# max_tokens = 512
+# timeout_seconds = 60
+# supports_vision = true
+
+# Example 2: Groq (Ultra-fast inference, text-only)
+# [model.remote]
+# base_url = "https://api.groq.com/openai/v1"
+# api_key = "your-groq-api-key-here"
+# model_name = "llama-3.1-70b-versatile"
+# temperature = 0.7
+# supports_vision = false
+# timeout_seconds = 30
+
+# Example 3: Local LM Studio (Self-hosted)
+# [model.remote]
+# base_url = "http://localhost:1234/v1"
+# api_key = "not-needed"
+# model_name = "local-llama-model"
+# temperature = 0.7
+# supports_vision = false
+# timeout_seconds = 120
+
+# Example 4: Anthropic Claude (via proxy)
+# [model.remote]
+# base_url = "https://api.anthropic.com/v1"
+# api_key = "your-anthropic-api-key"
+# model_name = "claude-3-sonnet-20240229"
+# temperature = 0.7
+# supports_vision = true
+# timeout_seconds = 60
+
+# Example 5: Ollama local server
+# [model.remote]
+# base_url = "http://localhost:11434/v1"
+# api_key = "ollama"
+# model_name = "llama3.1:70b"
+# temperature = 0.7
+# supports_vision = false
+# timeout_seconds = 90
+
+# Example 6: Custom headers (for special providers)
+# [model.remote]
+# base_url = "https://your-custom-api.com/v1"
+# api_key = "your-api-key"
+# model_name = "custom-model"
+# temperature = 0.7
+# supports_vision = true
+# [model.remote.additional_headers]
+# "X-Custom-Auth" = "bearer-token"
+# "X-API-Version" = "v2"
+
+# To use remote models:
+# 1. Uncomment one of the examples above
+# 2. Fill in your actual API key and endpoint
+# 3. Set supports_vision = true if your model supports images
+# 4. Adjust temperature, max_tokens, etc. as needed
+# 5. OpticXT will automatically use the remote model instead of local inference
+
+# Benefits of using remote models:
+# - Run on minimal hardware (Pi Zero 2 W)
+# - No GPU required
+# - Access to latest/largest models
+# - Lower power consumption
+# - Faster startup (no model loading)

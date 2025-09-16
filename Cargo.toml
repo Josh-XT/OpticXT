@@ -38,15 +38,28 @@ config = "0.14"
 toml = "0.8"
 clap = { version = "4.0", features = ["derive"] }
 
+# HTTP client for remote model APIs
+reqwest = { version = "0.11", features = ["json"] }
+base64 = "0.22"
+
 # Real-time processing
 crossbeam = "0.8"
 parking_lot = "0.12"
 rand = "0.8"  # For benchmark simulation
 
 # Audio processing for voice input/output
-rodio = "0.17"  # Audio playback
+rodio = "0.17"  # Audio playbook
 cpal = "0.15"   # Cross-platform audio I/O
 tts = "0.26"    # Text-to-speech
+
+# Web server for API endpoints
+axum = { version = "0.7", features = ["multipart"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+bytes = "1.5"
+mime = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
 
 [dev-dependencies]
 criterion = "0.5"

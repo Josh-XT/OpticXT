@@ -23,6 +23,14 @@ OpticXT transforms visual and audio input into contextual understanding and imme
 - **Multimodal Support**: Text, image, and audio processing with [`unsloth/gemma-3n-E4B-it`](https://huggingface.co/unsloth/gemma-3n-E4B-it) vision model
 - **Real-time Inference**: 36-38% GPU utilization with 6.8GB VRAM usage for continuous processing
 
+### 🌐 Remote Model Support (NEW)
+
+- **OpenAI-Compatible APIs**: Support for GPT-4o, Claude, Groq, and custom endpoints
+- **Minimal Hardware**: Run on Raspberry Pi Zero 2 W with remote inference
+- **Vision Support**: Full multimodal capabilities via remote models
+- **Seamless Integration**: Same interface for local and remote models
+- **Provider Flexibility**: Switch between OpenAI, Anthropic, Groq, or self-hosted models
+
 ### 🎯 Real-Time Vision & Audio Processing
 
 - Real camera input with automatic device detection and hardware fallback
@@ -46,9 +54,39 @@ OpticXT transforms visual and audio input into contextual understanding and imme
 - **Edge-Ready**: Optimized for NVIDIA Jetson Nano and desktop GPU deployment
 - **Real-time Pipeline**: Sub-second inference with continuous processing
 
+## Project Structure
+
+OpticXT follows a clean, organized structure that separates core functionality from supporting files:
+
+### Core Application
+- **`src/`** - Main source code
+  - `main.rs` - Application entry point and CLI
+  - `models.rs` - AI model management (local/remote)
+  - `config.rs` - Configuration management
+  - `pipeline.rs` - Vision-action processing pipeline
+  - `camera.rs` - Camera input handling
+  - `audio.rs` - Audio input/output processing
+  - `vision_basic.rs` - Computer vision processing
+  - `remote_model.rs` - OpenAI-compatible API client
+
+### Testing & Examples
+- **`tests/`** - Comprehensive test suite
+- **`examples/`** - Usage examples and configurations
+- **`scripts/`** - Utility and testing scripts
+
+### Documentation & Configuration
+- **`docs/`** - Comprehensive documentation
+- **`config.toml`** - Main configuration file
+- **`models/`** - Model storage directory
+- **`prompts/`** - System prompts and templates
+
+This organization provides clear separation between operational code, testing, examples, and documentation, making the project easy to navigate and maintain.
+
 ## Core Concepts
 
 ### Vision-to-Action Pipeline
+
+```
 
 1. **Visual Input**: Real-time camera stream with automatic device detection
 2. **Object Detection**: Optimized computer vision with spam prevention (max 10 objects)
@@ -192,10 +230,73 @@ enable_vad = true          # Voice activity detection
 model_path = "models/gemma-3n-E4B-it-Q4_K_M.gguf"
 temperature = 0.7     # Lower = more deterministic
 
+# Remote model configuration (optional)
+# Uncomment to use remote API instead of local model
+# [model.remote]
+# base_url = "https://api.openai.com/v1"
+# api_key = "your-api-key-here"
+# model_name = "gpt-4o"
+# supports_vision = true
+
 [performance]
 use_gpu = true        # Set to false if no CUDA
 processing_interval_ms = 100  # Adjust for performance
 ```
+
+#### Remote Model Support
+
+OpticXT supports remote model inference via OpenAI-compatible APIs, enabling deployment on low-power hardware like Raspberry Pi Zero 2 W. When a remote model is configured, OpticXT will use it instead of local inference, dramatically reducing hardware requirements while maintaining full functionality.
+
+**Supported Remote Providers:**
+- **OpenAI**: GPT-4o with vision support for high-quality multimodal inference
+- **Groq**: Ultra-fast inference with Llama models (text-only)
+- **Anthropic**: Claude models via OpenAI-compatible endpoints
+- **Local APIs**: LM Studio, Ollama, or any OpenAI-compatible server
+
+**Example Remote Configurations:**
+
+```toml
+# OpenAI GPT-4o with vision
+[model.remote]
+base_url = "https://api.openai.com/v1"
+api_key = "your-openai-key"
+model_name = "gpt-4o"
+supports_vision = true
+
+# Groq (very fast, text-only)
+[model.remote]
+base_url = "https://api.groq.com/openai/v1"
+api_key = "your-groq-key"
+model_name = "llama-3.1-70b-versatile"
+supports_vision = false
+
+# Local LM Studio server
+[model.remote]
+base_url = "http://localhost:1234/v1"
+api_key = "not-needed"
+model_name = "local-model"
+supports_vision = false
+```
+
+**Benefits of Remote Models:**
+- **Minimal Hardware**: Run on Pi Zero 2 W or any low-power device
+- **No GPU Required**: Offload inference to powerful remote servers
+- **Latest Models**: Access to cutting-edge models without local storage
+- **Scalability**: Handle multiple robot instances without per-device model loading
+
+### Examples and Scripts
+
+OpticXT includes comprehensive examples and utility scripts:
+
+**Configuration Examples** (`examples/`):
+- `examples/remote_model_examples.toml` - Remote model configurations for various providers
+- `examples/example_api_client.py` - Python client demonstrating API usage
+
+**Utility Scripts** (`scripts/`):
+- `scripts/test_api.sh` - Test API endpoints
+- `scripts/debug_cuda.sh` - CUDA environment debugging
+- `scripts/demo.sh` - System demonstration
+- `scripts/test_model_performance.sh` - Performance benchmarking
 
 ### Running OpticXT
 
@@ -223,9 +324,18 @@ USAGE:
 OPTIONS:
     -c, --config <CONFIG>              Configuration file path [default: config.toml]
     -d, --camera-device <DEVICE>       Camera device index [default: 0]
+    -m, --model-path <PATH>            Override model path from config
+        --video-chat                   Run in video chat/assistant mode
+        --chat-mode <MODE>             Chat mode: assistant, monitoring [default: assistant]
     -v, --verbose                      Enable verbose logging with GPU monitoring
+        --benchmark                    Run model performance benchmark
+        --benchmark-iterations <N>     Number of benchmark iterations [default: 50]
+        --api-server                   Start API server mode
+        --api-port <PORT>              API server port [default: 8080]
     -h, --help                         Print help information
 ```
+
+**Note**: All test commands have been moved to standard Cargo test commands. Use `cargo test` instead of command-line test flags.
 
 #### Expected Performance (RTX 4090)
 
@@ -237,6 +347,8 @@ OPTIONS:
 
 ## Usage
 
+### Robot Control Mode
+
 After installation, run the system:
 
 ```bash
@@ -247,19 +359,48 @@ cargo run --release --features cuda
 cargo run --release --features cuda -- --config custom.toml --camera-device 1
 ```
 
-For robot control mode, edit `config.toml` to enable hardware integration:
+### API Server Mode
+
+OpticXT can also run as a REST API server for integration with web applications, mobile apps, or other services:
 
 ```bash
-# Test robot commands
-cargo run --release -- --test-robot-commands
+# Start API server on default port 8080
+cargo run --release --features cuda -- --api-server
 
-# Monitor GPU performance (in separate terminal)
-watch -n 1 nvidia-smi
+# Start on custom port
+cargo run --release --features cuda -- --api-server --api-port 3000
+
+# CPU-only mode (no CUDA required)
+cargo run --release --no-default-features -- --api-server
 ```
 
-**Quick Test**: Verify your setup with the vision flow test:
+**API Endpoint**: `POST /v1/inference`
+
+- Accepts multipart form data with optional text, images, or video files
+- Returns JSON responses with model-generated text
+- Supports real-time task status monitoring
+- See `API_DOCUMENTATION.md` for detailed usage examples
+
+Test the API:
+
 ```bash
-cargo run --bin test_vision_flow --features cuda
+# Simple text inference
+curl -X POST http://localhost:8080/v1/inference -F "text=What do you see?"
+
+# Image analysis
+curl -X POST http://localhost:8080/v1/inference -F "text=Describe this image" -F "image=@photo.jpg"
+```
+
+For robot control mode, edit `config.toml` to enable hardware integration.
+
+**Quick Test**: Verify your setup with tests:
+
+```bash
+# Run basic functionality tests
+cargo test --test test_simple
+
+# Test with real camera (if available)
+cargo test --test test_camera_vision
 ```
 
 ## Hardware Requirements & Compatibility
@@ -300,82 +441,62 @@ Flexible camera support with automatic detection:
 
 ## Testing & Development
 
-OpticXT includes comprehensive testing capabilities for development and validation:
+OpticXT includes comprehensive testing capabilities organized in the `tests/` directory:
 
-### Test Modes
-
-The system provides 9 different test modes to validate various components:
-
-#### Core AI Tests
+### Running Tests
 
 ```bash
-# Quick smoke test (fast basic functionality check)
-cargo run --release --features cuda -- --test-quick-smoke
-
-# Simple text inference test
-cargo run --release --features cuda -- --test-simple
-
-# UQFF quantized model test
-cargo run --release --features cuda -- --test-uqff
-```
-
-#### Multimodal Tests
-
-```bash
-# Comprehensive multimodal test (text + image + audio)
-cargo run --release --features cuda -- --test-multimodal
-
-# Image-only inference test
-cargo run --release --features cuda -- --test-image
-
-# Alternative image inference test
-cargo run --release --features cuda -- --test-image-only
-
-# Audio-only inference test
-cargo run --release --features cuda -- --test-audio
-```
-
-#### Specialized Tests
-
-```bash
-# OpenAI-style tool calling format validation
-cargo run --release --features cuda -- --test-tool-format
-
-# Robot command generation scenarios
-cargo run --release --features cuda -- --test-robot-commands
-```
-
-#### Camera Vision Tests
-
-```bash
-# Test real camera input for vision description (confirms camera usage)
-cargo run --release --features cuda -- --test-camera-vision
-
-# Test vision consistency with main branch behavior  
-cargo run --release --features cuda -- --test-vision-main-consistency
-```
-
-### Integration Tests
-
-```bash
-# Run unit tests (no GPU required)
+# Run all tests using standard Cargo commands
 cargo test
 
-# Run all tests including GPU-intensive ones
-cargo test -- --ignored
+# Run unit tests only
+cargo test --lib
 
-# Run specific integration test
-cargo test test_quick_smoke_integration -- --ignored
+# Run integration tests  
+cargo test --test integration_tests
+
+# Run specific test files
+cargo test --test test_simple
+cargo test --test test_multimodal
+cargo test --test test_camera_vision
 ```
+
+### Test Organization
+
+Tests are organized in the following structure:
+- **`tests/integration_tests.rs`** - Main integration tests
+- **`tests/test_simple.rs`** - Basic text inference tests
+- **`tests/test_multimodal.rs`** - Multimodal (text + image + audio) tests
+- **`tests/test_image.rs`** - Image processing tests
+- **`tests/test_camera_vision.rs`** - Real camera vision tests
+- **`tests/test_remote_model.rs`** - Remote model configuration tests
+- **`tests/test_vision_flow.rs`** - Vision pipeline flow tests
+- **`tests/test_vision_pipeline.rs`** - Vision processing pipeline tests
 
 ### Development Testing Workflow
 
-1. **Start with smoke test**: `--test-quick-smoke` for basic functionality
-2. **Test camera vision**: `--test-camera-vision` to confirm camera input usage
-3. **Test specific components**: Use targeted tests like `--test-image` or `--test-audio`
-4. **Full validation**: Run `--test-multimodal` for comprehensive testing
-5. **Consistency check**: `--test-vision-main-consistency` to verify main branch behavior
-6. **Performance validation**: Use `--test-uqff` for model-specific testing
+1. **Start with basic tests**: `cargo test --lib` for unit tests
+2. **Test specific components**: `cargo test --test test_simple` for text inference
+3. **Test camera integration**: `cargo test --test test_camera_vision` (requires camera)
+4. **Test multimodal features**: `cargo test --test test_multimodal`
+5. **Test remote models**: `cargo test --test test_remote_model`
+6. **Full integration**: `cargo test --test integration_tests`
+
+### Test Scripts and Examples
+
+The `scripts/` directory contains utility scripts for testing and development:
+- **`scripts/test_api.sh`** - API endpoint testing
+- **`scripts/test_model_performance.sh`** - Model performance benchmarks
+- **`scripts/debug_cuda.sh`** - CUDA debugging utilities
+- **`scripts/demo.sh`** - System demonstration script
+
+### Example Usage and Configuration
+
+The `examples/` directory contains practical examples and configurations:
+- **`examples/example_api_client.py`** - Python API client example
+- **`examples/remote_model_examples.toml`** - Remote model configuration examples
+
+For detailed remote model configuration examples, see `examples/remote_model_examples.toml`.
 
 ### Expected Test Results
 
@@ -635,12 +756,17 @@ OpticXT generates OpenAI-style function calls for precise robot control:
 
 ## Contributing
 
-We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for details on:
+We welcome contributions! Please see our [contributing guidelines](docs/CONTRIBUTING.md) for details on:
 
 - Code style and standards
 - Testing requirements
 - Pull request process
 - Development setup
+
+For detailed documentation, see:
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - Complete API reference
+- **[CUDA Build Guide](docs/CUDA_BUILD_GUIDE.md)** - GPU setup instructions
+- **[Remote Model Implementation](docs/REMOTE_MODEL_IMPLEMENTATION.md)** - Remote API integration guide
 
 ---
 

@@ -31,7 +31,7 @@ pub struct VisionConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelConfig {
-    /// Path to the GGUF model file
+    /// Path to the GGUF model file (for local models)
     pub model_path: String,
     pub quantization_method: String, // "uqff" or "isq"
     pub isq_type: String, // ISQ quantization type: Q2K, Q3K, Q4K, Q5K, Q6K, Q8_0, Q8_1
@@ -43,6 +43,30 @@ pub struct ModelConfig {
     pub top_p: f32,
     /// Maximum tokens to generate
     pub max_tokens: usize,
+    /// Remote model configuration (if present, uses remote model instead of local)
+    pub remote: Option<RemoteModelConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemoteModelConfig {
+    /// Base URI for the OpenAI-compatible API (e.g., "https://api.openai.com/v1")
+    pub base_url: String,
+    /// API key for authentication
+    pub api_key: String,
+    /// Model name to use (e.g., "gpt-4o", "claude-3-sonnet", "llama-3.1-70b-versatile")
+    pub model_name: String,
+    /// Temperature for generation (overrides main model config if specified)
+    pub temperature: Option<f32>,
+    /// Top-p sampling (overrides main model config if specified)
+    pub top_p: Option<f32>,
+    /// Maximum tokens to generate (overrides main model config if specified)
+    pub max_tokens: Option<usize>,
+    /// Timeout for requests in seconds
+    pub timeout_seconds: Option<u64>,
+    /// Whether the remote model supports vision/multimodal input
+    pub supports_vision: bool,
+    /// Additional headers to send with requests
+    pub additional_headers: Option<std::collections::HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +134,7 @@ impl Default for OpticXTConfig {
                 temperature: 0.7,
                 top_p: 0.9,
                 max_tokens: 512,
+                remote: None, // No remote model by default, use local inference
             },
             context: ContextConfig {
                 system_prompt: include_str!("../prompts/system_prompt.txt").to_string(),

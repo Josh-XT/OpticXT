@@ -1,7 +1,7 @@
 use crate::config::OpticXTConfig;
 use crate::vision::{VisionProcessor, Mat};
 use crate::context::ContextManager;
-use crate::models::{GemmaModel, ModelConfig, ensure_model_downloaded};
+use crate::models::{GemmaModel, ensure_model_downloaded};
 use crate::commands::{CommandExecutor, CommandExecutionResult};
 use crate::camera::{CameraSystem, CameraConfig};
 use crate::audio::{AudioSystem, AudioConfig};
@@ -80,14 +80,7 @@ impl VisionActionPipeline {
             ensure_model_downloaded(path).await?;
         }
         
-        let model_config = ModelConfig {
-            max_tokens: config.model.max_tokens,
-            temperature: config.model.temperature,
-            top_p: config.model.top_p,
-            context_length: config.model.context_length,
-        };
-        
-        let model = GemmaModel::load(model_path, model_config, config.model.quantization_method.clone(), config.model.isq_type.clone()).await?;
+        let model = GemmaModel::load(model_path, config.model.clone(), config.model.quantization_method.clone(), config.model.isq_type.clone()).await?;
         
         // Initialize command executor
         let command_executor = CommandExecutor::new(
@@ -356,6 +349,36 @@ impl VisionActionPipeline {
         
         // Fallback: clean up any JSON or formatting artifacts
         text.replace("{", "").replace("}", "").replace("\"", "").trim().to_string()
+    }
+    
+    // API-specific methods for external access
+    #[allow(dead_code)]
+    pub async fn get_current_camera_frame(&mut self) -> Result<image::DynamicImage> {
+        let sensor_data = self.camera_system.capture_sensor_data().await?;
+        sensor_data.frame.to_image()
+    }
+    
+    #[allow(dead_code)]
+    pub async fn process_inference_with_context(&mut self, prompt: &str, image: Option<image::DynamicImage>) -> Result<crate::models::GenerationResult> {
+        // Build context from current sensor data if no image provided
+        let generation_result = if let Some(provided_image) = image {
+            // Use provided image
+            self.model.generate_with_image(prompt, provided_image).await?
+        } else {
+            // Try to get current camera frame
+            match self.get_current_camera_frame().await {
+                Ok(camera_image) => {
+                    debug!("Using current camera frame for inference");
+                    self.model.generate_with_image(prompt, camera_image).await?
+                }
+                Err(e) => {
+                    warn!("Failed to get camera frame, using text-only inference: {}", e);
+                    self.model.generate(prompt).await?
+                }
+            }
+        };
+        
+        Ok(generation_result)
     }
 }
 

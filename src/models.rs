@@ -8,9 +8,11 @@ use std::path::PathBuf;
 use tracing::{info, debug, warn, error};
 use image::DynamicImage;
 use serde_json::json;
+use crate::config::{RemoteModelConfig, ModelConfig};
+use crate::remote_model::RemoteModel;
 
 #[derive(Debug, Clone)]
-pub struct ModelConfig {
+pub struct ModelGenerationConfig {
     // Config fields are kept for future extensibility and test configuration
     #[allow(dead_code)]
     pub max_tokens: usize,
@@ -30,15 +32,53 @@ pub struct GenerationResult {
 }
 
 pub struct GemmaModel {
-    model: Arc<mistralrs::Model>,
+    model_type: ModelType,
     #[allow(dead_code)]
-    config: ModelConfig,
+    config: ModelGenerationConfig,
     #[allow(dead_code)]
     model_id: String,
 }
 
+enum ModelType {
+    Local(Arc<mistralrs::Model>),
+    Remote(RemoteModel),
+}
+
 impl GemmaModel {
     pub async fn load(model_id: Option<String>, config: ModelConfig, quantization_method: String, isq_type_str: String) -> Result<Self> {
+        // Check if remote model configuration is present
+        if let Some(remote_config) = config.remote.clone() {
+            return Self::load_remote(model_id, config, remote_config).await;
+        }
+        
+        // Load local model (existing logic)
+        Self::load_local(model_id, config, quantization_method, isq_type_str).await
+    }
+
+    async fn load_remote(model_id: Option<String>, config: ModelConfig, remote_config: RemoteModelConfig) -> Result<Self> {
+        info!("🌐 Loading remote model: {}", remote_config.model_name);
+        
+        let remote_model = RemoteModel::new(remote_config.clone())?;
+        
+        let effective_model_id = model_id.unwrap_or_else(|| remote_config.model_name.clone());
+        
+        info!("✅ Successfully initialized remote model: {}", effective_model_id);
+        
+        let generation_config = ModelGenerationConfig {
+            max_tokens: config.max_tokens,
+            temperature: config.temperature,
+            top_p: config.top_p,
+            context_length: config.context_length,
+        };
+        
+        Ok(Self {
+            model_type: ModelType::Remote(remote_model),
+            config: generation_config,
+            model_id: effective_model_id,
+        })
+    }
+
+    async fn load_local(model_id: Option<String>, config: ModelConfig, quantization_method: String, isq_type_str: String) -> Result<Self> {
         let overall_start = std::time::Instant::now();
         info!("🚀 Initializing Gemma model with mistral.rs Vision API");
         
@@ -177,9 +217,16 @@ impl GemmaModel {
         info!("✅ Successfully loaded model with multimodal support: {}", model_id);
         info!("⏱️ Total model loading time: {:.3}s", overall_start.elapsed().as_secs_f64());
         
+        let generation_config = ModelGenerationConfig {
+            max_tokens: config.max_tokens,
+            temperature: config.temperature,
+            top_p: config.top_p,
+            context_length: config.context_length,
+        };
+        
         Ok(Self {
-            model: Arc::new(model),
-            config,
+            model_type: ModelType::Local(Arc::new(model)),
+            config: generation_config,
             model_id,
         })
     }
@@ -192,11 +239,24 @@ impl GemmaModel {
         self.generate_multimodal(prompt, Some(image), None).await
     }
     
+    #[allow(dead_code)]
     pub async fn generate_with_audio(&mut self, prompt: &str, audio: Vec<u8>) -> Result<GenerationResult> {
         self.generate_multimodal(prompt, None, Some(audio)).await
     }
     
     pub async fn generate_multimodal(&mut self, prompt: &str, image: Option<DynamicImage>, audio: Option<Vec<u8>>) -> Result<GenerationResult> {
+        match &self.model_type {
+            ModelType::Remote(remote_model) => {
+                remote_model.generate_multimodal(prompt, image, audio).await
+            }
+            ModelType::Local(model) => {
+                let model = model.clone(); // Clone the Arc
+                self.generate_local(prompt, image, audio, &model).await
+            }
+        }
+    }
+
+    async fn generate_local(&self, prompt: &str, image: Option<DynamicImage>, audio: Option<Vec<u8>>, model: &Arc<mistralrs::Model>) -> Result<GenerationResult> {
         let start_time = std::time::Instant::now();
         
         // Validate prompt length
@@ -220,7 +280,7 @@ impl GemmaModel {
                     effective_prompt,
                     vec![img.clone()],
                     vec![audio_input],
-                    &*self.model,
+                    model,
                 )?
             } else {
                 // Text + Image - Follow the official Gemma 3n pattern
@@ -228,7 +288,7 @@ impl GemmaModel {
                     TextMessageRole::User,
                     effective_prompt,
                     vec![img.clone()],
-                    &*self.model,
+                    model,
                 )?
             }
         } else {
@@ -253,7 +313,7 @@ impl GemmaModel {
         // Send the request and get response with timeout (increased for UQFF models)
         let response = tokio::time::timeout(
             std::time::Duration::from_secs(180), // Increased timeout for UQFF vision models
-            self.model.send_chat_request(messages)
+            model.send_chat_request(messages)
         ).await
         .map_err(|_| anyhow!("Model inference timed out after 180 seconds"))?
         .map_err(|e| anyhow!("Model inference failed: {}", e))?;
@@ -823,7 +883,7 @@ impl GemmaModel {
     }
     
     #[allow(dead_code)]
-    pub fn get_config(&self) -> &ModelConfig {
+    pub fn get_config(&self) -> &ModelGenerationConfig {
         &self.config
     }
     
