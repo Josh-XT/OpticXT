@@ -10,7 +10,7 @@ anyhow = "1.0"
 
 // Vision Test - Verify camera → vision → model pipeline
 use anyhow::Result;
-use tracing::{info, debug, error};
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -87,7 +87,7 @@ async fn test_vision_processing() -> Result<()> {
     let mut test_frame = Mat::new(640, 480, 3);
     // Fill with a simple pattern to simulate camera input
     for i in 0..test_frame.data.len() {
-        test_frame.data[i] = ((i % 256) as u8);
+        test_frame.data[i] = (i % 256) as u8;
     }
     
     let sensor_data = SensorData {

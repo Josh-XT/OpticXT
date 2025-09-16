@@ -1,4 +1,5 @@
 use opticxt::models::GemmaModel;
+use opticxt::config::ModelConfig;
 use std::env;
 
 #[tokio::main]
@@ -8,7 +9,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("Testing OpticXT Gemma Model...");
     
-    let model = GemmaModel::new("models/gemma-3n-E4B-it-Q4_K_M.gguf", "models/tokenizer.json").await?;
+    let config = ModelConfig {
+        model_path: "models/gemma-3n-E4B-it-Q4_K_M.gguf".to_string(),
+        quantization_method: "isq".to_string(),
+        isq_type: "Q4K".to_string(),
+        max_tokens: 50,
+        temperature: 0.7,
+        top_p: 0.9,
+        context_length: 512,
+        remote: None,
+    };
+    
+    let mut model = GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await?;
     
     let test_prompts = vec![
         "Hello, how are you?",
@@ -19,8 +31,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     for prompt in test_prompts {
         println!("\nPrompt: {}", prompt);
-        match model.generate_response(prompt, 50).await {
-            Ok(response) => println!("Response: {}", response),
+        match model.generate(prompt).await {
+            Ok(result) => println!("Response: {}", result.text),
             Err(e) => println!("Error: {}", e),
         }
     }

@@ -6,10 +6,14 @@ pub async fn test_simple_inference() -> Result<()> {
     println!("🚀 Testing simple text inference...");
     
     let config = ModelConfig {
+        model_path: "models/gemma-3n-E4B-it-Q4_K_M.gguf".to_string(),
+        quantization_method: "isq".to_string(),
+        isq_type: "Q4K".to_string(),
         max_tokens: 25,  // Very small for quick test
         temperature: 0.1,
         top_p: 0.8,
         context_length: 256,
+        remote: None,
     };
     
     println!("📥 Loading UQFF Gemma 3n model...");
