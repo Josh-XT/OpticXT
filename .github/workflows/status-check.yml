@@ -45,14 +45,17 @@ jobs:
       run: |
         echo "🧪 Checking test functions..."
         
-        if [ -f "src/tests.rs" ]; then
-          test_count=$(grep -c "pub async fn test_" src/tests.rs)
-          echo "✅ Found $test_count test functions in src/tests.rs"
+        if [ -d "tests" ]; then
+          test_file_count=$(find tests -name "*.rs" | wc -l)
+          echo "✅ Found $test_file_count test files in tests/ directory"
           
-          echo "Test functions:"
-          grep "pub async fn test_" src/tests.rs | sed 's/pub async fn /- /' | sed 's/() -> Result<()> {//'
+          test_function_count=$(find tests -name "*.rs" -exec grep -l "pub async fn test_\|#\[test\]\|#\[tokio::test\]" {} \; | wc -l)
+          echo "✅ Found test functions in $test_function_count files"
+          
+          echo "Test files:"
+          find tests -name "*.rs" | sed 's/^tests\//- /'
         else
-          echo "❌ src/tests.rs not found"
+          echo "❌ tests/ directory not found"
         fi
     
     - name: Check CLI test options
@@ -60,11 +63,11 @@ jobs:
         echo "⚙️  Checking CLI test options in main.rs..."
         
         if [ -f "src/main.rs" ]; then
-          test_args=$(grep -c "test.*: bool" src/main.rs)
+          test_args=$(grep -c "test.*: bool" src/main.rs || echo "0")
           echo "✅ Found $test_args test CLI arguments in main.rs"
           
           echo "Test CLI options:"
-          grep "test.*: bool" src/main.rs | sed 's/.*#\[arg(long)\]/- --/' | sed 's/test_/test-/' | sed 's/: bool//'
+          grep "test.*: bool" src/main.rs | sed 's/.*#\[arg(long)\]/- --/' | sed 's/test_/test-/' | sed 's/: bool//' || echo "  (none - tests are now run via 'cargo test')"
         else
           echo "❌ src/main.rs not found"
         fi

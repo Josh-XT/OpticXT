@@ -96,17 +96,18 @@ jobs:
     
     - name: Verify test functions exist
       run: |
-        echo "Checking that all test functions are defined..."
-        grep -n "pub async fn test_" src/tests.rs || {
-          echo "ERROR: Test functions not found in src/tests.rs"
+        echo "Checking that test functions are defined in tests/ directory..."
+        test_count=$(find tests -name "*.rs" -exec grep -l "pub async fn test_\|#\[test\]\|#\[tokio::test\]" {} \; | wc -l)
+        if [ "$test_count" -gt 0 ]; then
+          echo "✅ Found test functions in $test_count test files"
+          echo "Test files:"
+          find tests -name "*.rs" | sed 's/^/- /'
+        else
+          echo "ERROR: No test functions found in tests/ directory"
           exit 1
-        }
+        fi
         
-        echo "Checking that main.rs references test functions..."
-        grep -n "tests::" src/main.rs || {
-          echo "ERROR: Test function calls not found in src/main.rs"
-          exit 1
-        }
+        echo "✅ Tests are now organized in tests/ directory and run via 'cargo test'"
     
     - name: Compile tests module
       run: |
@@ -116,11 +117,15 @@ jobs:
     - name: Verify CLI test options
       run: |
         cargo build --no-default-features --features cpu --quiet
-        echo "Checking available test CLI options..."
-        ./target/debug/opticxt --help | grep -E "(test-|Test)" || {
-          echo "Test options found in help:"
-          ./target/debug/opticxt --help | grep -A 20 -B 5 "test"
-        }
+        echo "Checking that test CLI options have been removed..."
+        test_options=$(./target/debug/opticxt --help | grep -c "test-" || echo "0")
+        if [ "$test_options" -eq 0 ]; then
+          echo "✅ Test CLI options properly removed (found $test_options)"
+          echo "✅ Tests are now run via 'cargo test' command"
+        else
+          echo "⚠️  Found $test_options test CLI options - they should be removed"
+          ./target/debug/opticxt --help | grep "test-"
+        fi
 
   security-audit:
     name: Security Audit
