@@ -1,12 +1,12 @@
 use anyhow::Result;
-use crate::config::OpticXTConfig;
-use crate::camera::{CameraSystem, CameraConfig};
-use crate::vision_basic::VisionProcessor;
-use crate::models::{GemmaModel, ModelConfig};
-use crate::context::ContextManager;
+use opticxt::config::OpticXTConfig;
+use opticxt::camera::{CameraSystem, CameraConfig};
+use opticxt::vision_basic::VisionProcessor;
+use opticxt::models::GemmaModel;
+use opticxt::context::ContextManager;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, debug, warn};
+use tracing::warn;
 
 /// Test that confirms camera input is properly flowing to vision inference
 /// This test validates the complete camera -> vision -> model -> description pipeline
@@ -45,16 +45,9 @@ pub async fn test_real_camera_vision_description() -> Result<()> {
     
     // Step 3: Initialize model for vision inference
     println!("\n🧠 Step 3: Loading Vision Model");
-    let model_config = ModelConfig {
-        max_tokens: config.model.max_tokens,
-        temperature: config.model.temperature,
-        top_p: config.model.top_p,
-        context_length: config.model.context_length,
-    };
-    
     let mut model = GemmaModel::load(
         None, 
-        model_config, 
+        config.model.clone(), 
         config.model.quantization_method.clone(), 
         config.model.isq_type.clone()
     ).await?;
@@ -87,7 +80,7 @@ pub async fn test_real_camera_vision_description() -> Result<()> {
                  frame_context.scene_description.chars().take(100).collect::<String>());
         
         // Build context for model inference
-        let mandatory_context = {
+        let _mandatory_context = {
             let context_manager = context_manager.read().await;
             context_manager.build_context(&frame_context)
         };
@@ -182,7 +175,7 @@ pub async fn test_vision_consistency_with_main() -> Result<()> {
     println!("🔄 Testing Vision Consistency with Main Branch");
     println!("==============================================");
     
-    let config = OpticXTConfig::default();
+    let _config = OpticXTConfig::default();
     
     // Initialize the same components that would be used on main
     let mut camera_system = CameraSystem::new(CameraConfig {
@@ -245,12 +238,13 @@ pub async fn test_vision_consistency_with_main() -> Result<()> {
 }
 
 /// Quick integration test that verifies the complete vision pipeline works end-to-end
+#[allow(dead_code)]
 pub async fn test_vision_integration_quick() -> Result<()> {
     println!("⚡ Quick Vision Integration Test");
     println!("===============================");
     
     // This is a faster version that just confirms the pipeline works
-    let config = OpticXTConfig::default();
+    let _config = OpticXTConfig::default();
     
     // Test camera initialization
     let camera_config = CameraConfig { camera_id: 0, width: 640, height: 480, fps: 30.0 };

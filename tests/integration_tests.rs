@@ -1,6 +1,9 @@
-use opticxt::models::ModelConfig;
-use opticxt::tests::*;
+use opticxt::config::ModelConfig;
 use anyhow::Result;
+
+// Import individual test modules
+mod tests;
+use tests::*;
 
 #[tokio::test]
 async fn test_device_fallback_integration() -> Result<()> {
@@ -8,10 +11,14 @@ async fn test_device_fallback_integration() -> Result<()> {
     // and the model loading methods are properly defined
     
     let _config = ModelConfig {
+        model_path: "".to_string(),
+        quantization_method: "isq".to_string(),
+        isq_type: "Q4K".to_string(),
         max_tokens: 10,
         temperature: 0.3,
         top_p: 0.9,
         context_length: 512,
+        remote: None,
     };
     
     // This should compile and not panic - actual model loading
@@ -30,10 +37,14 @@ async fn test_device_fallback_integration() -> Result<()> {
 fn test_model_config_creation() {
     // Test basic model configuration creation
     let config = ModelConfig {
+        model_path: "".to_string(),
+        quantization_method: "isq".to_string(),
+        isq_type: "Q4K".to_string(),
         max_tokens: 100,
         temperature: 0.7,
         top_p: 0.95,
         context_length: 2048,
+        remote: None,
     };
     
     assert_eq!(config.max_tokens, 100);

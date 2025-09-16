@@ -1,5 +1,6 @@
 use anyhow::Result;
-use crate::models::{GemmaModel, ModelConfig};
+use opticxt::models::GemmaModel;
+use opticxt::config::ModelConfig;
 
 pub async fn test_simple_inference() -> Result<()> {
     println!("🚀 Testing simple text inference...");

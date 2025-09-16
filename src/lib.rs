@@ -6,8 +6,7 @@ pub mod context;
 pub mod pipeline;
 pub mod commands;
 pub mod vision_basic;
-pub mod tests;
-pub mod test_camera_vision;
+pub mod remote_model;
 
 // Re-export vision_basic as vision for compatibility
 pub use vision_basic as vision;

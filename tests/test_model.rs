@@ -1,6 +1,4 @@
-mod models;
-
-use models::GemmaModel;
+use opticxt::models::GemmaModel;
 use std::env;
 
 #[tokio::main]

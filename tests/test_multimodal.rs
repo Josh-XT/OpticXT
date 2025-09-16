@@ -1,21 +1,26 @@
 use anyhow::Result;
-use crate::models::{GemmaModel, ModelConfig};
+use opticxt::models::GemmaModel;
+use opticxt::config::ModelConfig;
 use image::{DynamicImage, ImageBuffer, Rgb};
 
 pub async fn test_multimodal_inference() -> Result<()> {
     println!("🚀 Testing multimodal inference capabilities...");
     
     let config = ModelConfig {
+        model_path: "".to_string(),
+        quantization_method: "isq".to_string(),
+        isq_type: "Q4K".to_string(),
         max_tokens: 50,  // Reduced for faster inference
         temperature: 0.1,  // Lower temperature for more deterministic output
         top_p: 0.8,
         context_length: 512,  // Reduced context length for faster processing
+        remote: None,
     };
     
     println!("📥 Loading UQFF Gemma 3n multimodal model...");
     
     // Load the UQFF model
-    let mut model = match GemmaModel::load(None, config, "isq".to_string(), "Q4K".to_string()).await {
+    let mut model = match GemmaModel::load(None, config.clone(), config.quantization_method.clone(), config.isq_type.clone()).await {
         Ok(model) => {
             println!("✅ UQFF multimodal model loaded successfully!");
             model

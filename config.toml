@@ -22,6 +22,45 @@ temperature = 0.7
 top_p = 0.9
 max_tokens = 512
 
+# Remote model configuration (optional - if present, uses remote API instead of local model)
+# Uncomment and configure to use a remote model instead of local inference
+# [model.remote]
+# base_url = "https://api.openai.com/v1"  # OpenAI API
+# api_key = "your-api-key-here"
+# model_name = "gpt-4o"
+# temperature = 0.7  # Optional: overrides main model temperature
+# top_p = 0.9        # Optional: overrides main model top_p
+# max_tokens = 512   # Optional: overrides main model max_tokens
+# timeout_seconds = 60
+# supports_vision = true
+# # Optional additional headers
+# # [model.remote.additional_headers]
+# # "X-Custom-Header" = "custom-value"
+
+# Alternative examples:
+# Groq (very fast inference)
+# [model.remote]
+# base_url = "https://api.groq.com/openai/v1"
+# api_key = "your-groq-key-here"
+# model_name = "llama-3.1-70b-versatile"
+# supports_vision = false
+# timeout_seconds = 30
+
+# Anthropic Claude via OpenAI-compatible API
+# [model.remote]
+# base_url = "https://api.anthropic.com/v1"
+# api_key = "your-anthropic-key-here"
+# model_name = "claude-3-sonnet-20240229"
+# supports_vision = true
+
+# Local LM Studio or similar
+# [model.remote]
+# base_url = "http://localhost:1234/v1"
+# api_key = "not-needed"
+# model_name = "local-model"
+# supports_vision = false
+# timeout_seconds = 120
+
 [context]
 # Mandatory context system
 system_prompt = "prompts/system_prompt.txt"

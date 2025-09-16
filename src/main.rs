@@ -11,8 +11,8 @@ mod models;
 mod config;
 mod camera;
 mod audio;
-mod tests;
-mod test_camera_vision;
+mod api;
+mod remote_model;
 // mod video_chat;  // Disabled due to winit compatibility issues
 
 use vision_basic as vision;
@@ -57,49 +57,13 @@ struct Args {
     #[arg(long, default_value = "50")]
     benchmark_iterations: usize,
     
-    /// Test UQFF model loading and inference
+    /// Start API server mode
     #[arg(long)]
-    test_uqff: bool,
+    api_server: bool,
     
-    /// Test multimodal inference (text, vision, audio)
-    #[arg(long)]
-    test_multimodal: bool,
-    
-    /// Test simple text inference only
-    #[arg(long)]
-    test_simple: bool,
-    
-    /// Test image inference only
-    #[arg(long)]
-    test_image: bool,
-    
-    /// Test OpenAI-style tool calling format
-    #[arg(long)]
-    test_tool_format: bool,
-    
-    /// Test quick smoke test (fast basic functionality check)
-    #[arg(long)]
-    test_quick_smoke: bool,
-    
-    /// Test image-only inference capabilities
-    #[arg(long)]
-    test_image_only: bool,
-    
-    /// Test audio-only inference capabilities
-    #[arg(long)]
-    test_audio: bool,
-    
-    /// Test robot command generation scenarios
-    #[arg(long)]
-    test_robot_commands: bool,
-    
-    /// Test real camera vision description (confirms camera input usage)
-    #[arg(long)]
-    test_camera_vision: bool,
-    
-    /// Test vision consistency with main branch behavior
-    #[arg(long)]
-    test_vision_main_consistency: bool,
+    /// API server port
+    #[arg(long, default_value = "8080")]
+    api_port: u16,
 }
 
 #[tokio::main]
@@ -125,80 +89,10 @@ async fn main() -> Result<()> {
         return Ok(());
     }
     
-    // Check if UQFF test mode is requested
-    if args.test_uqff {
-        info!("Starting UQFF model test");
-        tests::test_uqff_model().await?;
-        return Ok(());
-    }
-    
-    // Check if multimodal test mode is requested
-    if args.test_multimodal {
-        info!("Starting multimodal inference test");
-        tests::test_multimodal_inference().await?;
-        return Ok(());
-    }
-    
-    // Check if simple test mode is requested
-    if args.test_simple {
-        info!("Starting simple inference test");
-        tests::test_simple_inference().await?;
-        return Ok(());
-    }
-    
-    // Check if image test mode is requested
-    if args.test_image {
-        info!("Starting image inference test");
-        tests::test_image_inference().await?;
-        return Ok(());
-    }
-    
-    // Check if tool format test mode is requested
-    if args.test_tool_format {
-        info!("Starting tool format test");
-        tests::test_tool_format().await?;
-        return Ok(());
-    }
-    
-    // Check if quick smoke test mode is requested
-    if args.test_quick_smoke {
-        info!("Starting quick smoke test");
-        tests::test_quick_smoke().await?;
-        return Ok(());
-    }
-    
-    // Check if image-only test mode is requested
-    if args.test_image_only {
-        info!("Starting image-only inference test");
-        tests::test_image_only().await?;
-        return Ok(());
-    }
-    
-    // Check if audio test mode is requested
-    if args.test_audio {
-        info!("Starting audio inference test");
-        tests::test_audio_inference().await?;
-        return Ok(());
-    }
-    
-    // Check if robot commands test mode is requested
-    if args.test_robot_commands {
-        info!("Starting robot commands test");
-        tests::test_robot_commands().await?;
-        return Ok(());
-    }
-    
-    // Check if camera vision test mode is requested
-    if args.test_camera_vision {
-        info!("Starting real camera vision description test");
-        tests::test_camera_vision_description().await?;
-        return Ok(());
-    }
-    
-    // Check if vision main consistency test mode is requested
-    if args.test_vision_main_consistency {
-        info!("Starting vision consistency test with main branch");
-        tests::test_vision_main_consistency().await?;
+    // Check if API server mode is requested
+    if args.api_server {
+        info!("Starting API server mode on port {}", args.api_port);
+        run_api_server_mode(&args, config).await?;
         return Ok(());
     }
     
@@ -265,21 +159,26 @@ async fn run_robot_control_mode(args: &Args, config: OpticXTConfig) -> Result<()
 }
 
 async fn run_benchmark(args: &Args, _config: &OpticXTConfig) -> Result<()> {
-    use crate::models::{GemmaModel, ModelConfig};
+    use crate::models::GemmaModel;
+    use crate::config::ModelConfig;
     
     info!("Running benchmark with {} iterations", args.benchmark_iterations);
     
     // Test model performance
     let model_path = args.model_path.clone();
     let model_config = ModelConfig {
+        model_path: args.model_path.clone().unwrap_or_default(),
+        quantization_method: "isq".to_string(),
+        isq_type: "Q4K".to_string(),
         temperature: 0.7,
         top_p: 0.9,
         max_tokens: 100,
         context_length: 2048,
+        remote: None,
     };
     
     info!("Initializing model for benchmark...");
-    let mut model = match GemmaModel::load(model_path, model_config, "isq".to_string(), "Q4K".to_string()).await {
+    let mut model = match GemmaModel::load(model_path, model_config.clone(), model_config.quantization_method.clone(), model_config.isq_type.clone()).await {
         Ok(m) => {
             info!("Model loaded successfully for benchmark");
             m
@@ -347,6 +246,45 @@ async fn run_simulated_benchmark(iterations: usize) -> Result<()> {
     info!("✅ Simulated benchmark completed!");
     info!("📊 Performance: {:.2} operations/second", ops_per_sec);
     info!("⚡ Total iterations: {}", iterations);
+    
+    Ok(())
+}
+
+async fn run_api_server_mode(args: &Args, mut config: OpticXTConfig) -> Result<()> {
+    info!("Initializing API server mode with vision and model capabilities");
+    
+    // Enable multimodal features for API usage
+    config.vision.enable_multimodal_inference = true;
+    config.audio.enabled = true; // Enable for potential TTS responses
+    
+    // Initialize model for API usage
+    let model_path = args.model_path.clone().or_else(|| {
+        if config.model.model_path.is_empty() {
+            None
+        } else {
+            Some(config.model.model_path.clone())
+        }
+    });
+    
+    // Use the model config directly from the loaded configuration
+    
+    let model = crate::models::GemmaModel::load(
+        model_path,
+        config.model.clone(),
+        config.model.quantization_method.clone(),
+        config.model.isq_type.clone(),
+    ).await?;
+    
+    info!("Model initialized for API server");
+    
+    // Start the API server
+    match crate::api::start_api_server(model, args.api_port).await {
+        Ok(_) => info!("API server stopped"),
+        Err(e) => {
+            error!("API server error: {}", e);
+            return Err(anyhow::anyhow!("API server error: {}", e));
+        }
+    }
     
     Ok(())
 }
