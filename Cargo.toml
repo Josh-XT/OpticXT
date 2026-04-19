@@ -45,7 +45,7 @@ base64 = "0.22"
 # Real-time processing
 crossbeam = "0.8"
 parking_lot = "0.12"
-rand = "0.8"  # For benchmark simulation
+rand = "0.9.3"  # For benchmark simulation (updated to fix GHSA-cq8v-f236-94qc)
 
 # Audio processing for voice input/output
 rodio = "0.17"  # Audio playbook
